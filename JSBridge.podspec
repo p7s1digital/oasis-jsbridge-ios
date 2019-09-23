@@ -18,10 +18,6 @@ Pod::Spec.new do |s|
   s.xcconfig = {
     "DEFINES_MODULE" => "YES"
   }
-    
-  # s.resource_bundles = {
-  #    'JSBridge' => ['JSBridge/Assets/*.js']
-  # }
 
   # s.public_header_files = 'Pod/Classes/**/*.h'
   # s.dependency 'AFNetworking', '~> 2.3'
