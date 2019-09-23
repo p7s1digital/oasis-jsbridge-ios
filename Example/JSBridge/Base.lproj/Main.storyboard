@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="14490.70" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES" initialViewController="vXZ-lx-hvc">
+    <device id="retina4_7" orientation="portrait">
+        <adaptation id="fullscreen"/>
+    </device>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14490.49"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--View Controller-->
+        <scene sceneID="ufC-wZ-h7g">
+            <objects>
+                <viewController id="vXZ-lx-hvc" customClass="ViewController" customModule="JSBridge_Example" customModuleProvider="target" sceneMemberID="viewController">
+                    <layoutGuides>
+                        <viewControllerLayoutGuide type="top" id="jyV-Pf-zRb"/>
+                        <viewControllerLayoutGuide type="bottom" id="2fi-mo-0CV"/>
+                    </layoutGuides>
+                    <view key="view" contentMode="scaleToFill" id="kh9-bI-dsS">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <subviews>
+                            <button opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="255" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="4M3-1f-xMq">
+                                <rect key="frame" x="24" y="28" width="30" height="30"/>
+                                <state key="normal" title="Run"/>
+                                <connections>
+                                    <action selector="call" destination="vXZ-lx-hvc" eventType="touchUpInside" id="o8e-DG-LdM"/>
+                                </connections>
+                            </button>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="HV5-ML-0sf">
+                                <rect key="frame" x="62" y="34" width="297" height="18"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="15"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" text="native.setLabel(&quot;text&quot;);" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="MPE-5N-zzQ">
+                                <rect key="frame" x="16" y="58" width="343" height="609"/>
+                                <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
+                            </textView>
+                        </subviews>
+                        <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <constraints>
+                            <constraint firstItem="2fi-mo-0CV" firstAttribute="top" secondItem="MPE-5N-zzQ" secondAttribute="bottom" id="3z7-LI-1CI"/>
+                            <constraint firstItem="4M3-1f-xMq" firstAttribute="top" secondItem="jyV-Pf-zRb" secondAttribute="bottom" constant="8" id="Cdb-vu-gZI"/>
+                            <constraint firstItem="HV5-ML-0sf" firstAttribute="leading" secondItem="4M3-1f-xMq" secondAttribute="trailing" constant="8" id="DLm-Yv-aDm"/>
+                            <constraint firstItem="MPE-5N-zzQ" firstAttribute="leading" secondItem="kh9-bI-dsS" secondAttribute="leadingMargin" id="FL4-ht-0EE"/>
+                            <constraint firstItem="HV5-ML-0sf" firstAttribute="centerY" secondItem="4M3-1f-xMq" secondAttribute="centerY" id="TcV-t2-lrA"/>
+                            <constraint firstItem="MPE-5N-zzQ" firstAttribute="top" secondItem="4M3-1f-xMq" secondAttribute="bottom" id="eay-7f-1hh"/>
+                            <constraint firstItem="4M3-1f-xMq" firstAttribute="leading" secondItem="kh9-bI-dsS" secondAttribute="leadingMargin" constant="8" id="pil-VN-SfD"/>
+                            <constraint firstAttribute="trailingMargin" secondItem="MPE-5N-zzQ" secondAttribute="trailing" id="r7Z-kP-Hen"/>
+                            <constraint firstAttribute="trailingMargin" secondItem="HV5-ML-0sf" secondAttribute="trailing" id="sLr-WK-tgr"/>
+                        </constraints>
+                    </view>
+                    <connections>
+                        <outlet property="resultLabel" destination="HV5-ML-0sf" id="f9s-Cs-Son"/>
+                        <outlet property="textView" destination="MPE-5N-zzQ" id="paM-YI-zah"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="x5A-6p-PRh" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="-10.4" y="133.5832083958021"/>
+        </scene>
+    </scenes>
+</document>
