@@ -17,14 +17,18 @@
 import Foundation
 
 open class JSBridgeError: NSObject, Error {
-    public let type: ErrorType
+    public let type: String
     public var code: Int?
     public let message: String
     
-    init(type: ErrorType, code: Int? = nil, message: String? = nil) {
+    convenience init(type: ErrorType, message: String? = nil) {
+        self.init(type: type.rawValue, message: message ?? JSBridgeError.errorTypeToMessage(type))
+    }
+    
+    init(type: String, code: Int? = nil, message: String? = nil) {
         self.type = type
         self.code = code
-        self.message = message ?? JSBridgeError.errorTypeToMessage(type)
+        self.message = message ?? JSBridgeError.errorTypeToMessage(.unknown)
         super.init()
     }
     
@@ -64,13 +68,12 @@ open class JSBridgeError: NSObject, Error {
             return JSBridgeError(type: .unknown)
         }
         
-        var errorType: ErrorType = .unknown
+        var errorType: String = "unknown"
         var errorCode: Int?
         var errorMessage: String?
         
         if jsValue.hasProperty("type"),
-            let typeRaw = jsValue.forProperty("type").toString(),
-            let type = ErrorType(rawValue: typeRaw) {
+           let type = jsValue.forProperty("type").toString() {
             errorType = type
         }
         if jsValue.hasProperty("code") {
