@@ -17,7 +17,7 @@
 import Foundation
 import JavaScriptCore
 
-protocol JavascriptInterpreterProtocol: class {
+public protocol JavascriptInterpreterProtocol: class {
 
     func evaluateLocalFile(bundle: Bundle, filename: String, cb: (() -> Void)?)
     func evaluateString(js: String, cb: ((_: JSValue?) -> Void)?)
@@ -39,7 +39,7 @@ protocol JavascriptInterpreterProtocol: class {
 
 }
 
-extension JavascriptInterpreterProtocol {
+public extension JavascriptInterpreterProtocol {
 
     func evaluateLocalFile(bundle: Bundle, filename: String) {
         evaluateLocalFile(bundle: bundle, filename: filename, cb: nil)

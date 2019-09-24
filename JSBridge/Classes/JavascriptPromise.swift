@@ -17,26 +17,29 @@
 import Foundation
 import JavaScriptCore
 
-open class JavascriptPromise<T: Codable> {
+public class JavascriptPromise<T: Codable> {
 
     private var thenCallback: ((T) -> Void)?
     private var catchCallback: ((JSBridgeError) -> Void)?
     private var isCancelled = false
 
-    @discardableResult func then(_ callback: @escaping ((T) -> Void)) -> JavascriptPromise<T> {
+    public init() {
+    }
+    
+    @discardableResult public func then(_ callback: @escaping ((T) -> Void)) -> JavascriptPromise<T> {
         thenCallback = callback
         return self
     }
-    @discardableResult func except(_ callback: @escaping ((JSBridgeError) -> Void)) -> JavascriptPromise<T> {
+    @discardableResult public func except(_ callback: @escaping ((JSBridgeError) -> Void)) -> JavascriptPromise<T> {
         catchCallback = callback
         return self
     }
 
-    func cancel() {
+    public func cancel() {
         isCancelled = true
     }
 
-    func setup(promiseValue: JSValue) {
+    public func setup(promiseValue: JSValue) {
 
         // Callbacks need to have a strong reference to JavascriptPromise<T>,
         // because noone else does, as client code usually doesn't.
@@ -57,30 +60,30 @@ open class JavascriptPromise<T: Codable> {
         }
     }
 
-    func fail() {
+    public func fail() {
         self.catchCallback?(JSBridgeError(type: .jsPromiseFailed))
     }
 }
 
-class JavascriptValuePromise {
+public class JavascriptValuePromise {
 
     private var thenCallback: ((JSValue) -> Void)?
     private var catchCallback: ((JSBridgeError) -> Void)?
     private var isCancelled = false
 
-    @discardableResult func then(_ callback: @escaping ((JSValue) -> Void)) -> JavascriptValuePromise {
+    @discardableResult public func then(_ callback: @escaping ((JSValue) -> Void)) -> JavascriptValuePromise {
         thenCallback = callback
         return self
     }
-    @discardableResult func except(_ callback: @escaping ((JSBridgeError) -> Void)) -> JavascriptValuePromise {
+    @discardableResult public func except(_ callback: @escaping ((JSBridgeError) -> Void)) -> JavascriptValuePromise {
         catchCallback = callback
         return self
     }
-    func cancel() {
+    public func cancel() {
         isCancelled = true
     }
 
-    func setup(promiseValue: JSValue) {
+    public func setup(promiseValue: JSValue) {
 
         // We always set then/catch callbacks, even if they're not set by calling client code.
         // The reason behind this is our threading model of JavascriptInterpreter running
@@ -120,7 +123,7 @@ class JavascriptValuePromise {
         promiseValue.invokeMethod("catch", withArguments: [unsafeBitCast(catchCallback, to: AnyObject.self)])
     }
 
-    func fail() {
+    public func fail() {
         self.catchCallback?(JSBridgeError(type: .jsPromiseFailed))
     }
 }

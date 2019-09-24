@@ -131,7 +131,7 @@ public class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     // MARK: - calling JS functions
 
-    func call(object: JSValue?,
+    public func call(object: JSValue?,
               functionName: String,
               arguments: [Any],
               completion: @escaping (JSValue?) -> Void) {
@@ -149,7 +149,7 @@ public class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
     }
 
-    func callWithCallback<T: Codable>(object: JSValue?,
+    public func callWithCallback<T: Codable>(object: JSValue?,
                                       functionName: String,
                                       arguments: [Any],
                                       completion: @escaping (T?) -> Void) {
@@ -165,7 +165,7 @@ public class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
     }
 
-    func callWithPromise<T: Codable>(object: JSValue?,
+    public func callWithPromise<T: Codable>(object: JSValue?,
                                      functionName: String,
                                      arguments: [Any]) -> JavascriptPromise<T> {
 
@@ -185,7 +185,7 @@ public class JavascriptInterpreter: JavascriptInterpreterProtocol {
         return promise
     }
 
-    func callWithValuePromise(object: JSValue?,
+    public func callWithValuePromise(object: JSValue?,
                               functionName: String,
                               arguments: [Any]) -> JavascriptValuePromise {
 

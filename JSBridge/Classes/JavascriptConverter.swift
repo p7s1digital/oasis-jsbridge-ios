@@ -19,7 +19,7 @@ import JavaScriptCore
 
 extension JSValue {
 
-    func jsbridge_json() -> String {
+    public func jsbridge_json() -> String {
 
         guard
             let stringifyFunction = self.context.globalObject.objectForKeyedSubscript("__jsBridge__stringify"),
@@ -28,7 +28,7 @@ extension JSValue {
         return jsonString
     }
 
-    func convertToDict() -> NSDictionary? {
+    public func convertToDict() -> NSDictionary? {
         do {
             guard let data = self.jsbridge_json().data(using: .utf8),
                 let json = try JSONSerialization.jsonObject(with: data) as? NSDictionary else {
