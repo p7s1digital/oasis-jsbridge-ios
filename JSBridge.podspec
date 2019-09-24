@@ -10,6 +10,7 @@ Pod::Spec.new do |s|
   s.source           = { :git => 'https://gitlab.p7s1.io/oasis-player/native-jsbridge-ios.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '9.0'
+  s.tvos.deployment_target = '9.0'
   s.swift_version = '5.0'
   s.static_framework = false
   s.source_files = 'JSBridge/Classes/**/*'
