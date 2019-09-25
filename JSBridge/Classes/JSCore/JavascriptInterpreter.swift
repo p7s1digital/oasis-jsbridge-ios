@@ -17,7 +17,7 @@
 import Foundation
 import JavaScriptCore
 
-public class JavascriptInterpreter: JavascriptInterpreterProtocol {
+open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     public var jsContext: JSContext!
     private var jsQueue = DispatchQueue(label: "JSBridge.JSSerialQueue")
@@ -25,7 +25,7 @@ public class JavascriptInterpreter: JavascriptInterpreterProtocol {
     private var timeoutIdCounter = 0
     private var pendingTimeouts: [Int: JSValue?] = [:]  // key: timeoutId
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
-    private let bundle: Bundle!
+    private let jsBridgeBundle: Bundle!
     
     enum JSError: Error {
         case runtimeError(String)
@@ -37,7 +37,7 @@ public class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
         jsContext = JSContext()!
 
-        bundle = Bundle(for: type(of: self))
+        jsBridgeBundle = Bundle(for: JavascriptInterpreter.self)
 
         setUpExceptionHandling()
         setUpGlobal()
@@ -131,7 +131,7 @@ public class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     // MARK: - calling JS functions
 
-    public func call(object: JSValue?,
+    open func call(object: JSValue?,
               functionName: String,
               arguments: [Any],
               completion: @escaping (JSValue?) -> Void) {
@@ -335,11 +335,11 @@ public class JavascriptInterpreter: JavascriptInterpreterProtocol {
         // on iOS 8 a Promise is existing, but doesn't work due to missing event-loop => we don't support this case
         // on iOS 9 Promise is non-existing
         // since iOS 10 Promise are working on JSCore
-        evaluateLocalFile(bundle: bundle, filename: "promise.js", cb: {})
+        evaluateLocalFile(bundle: jsBridgeBundle, filename: "promise.js", cb: {})
     }
 
     private func setUpStringify() {
-        evaluateLocalFile(bundle: bundle, filename: "customStringify.js", cb: {})
+        evaluateLocalFile(bundle: jsBridgeBundle, filename: "customStringify.js", cb: {})
     }
 
     private func runPromiseQueue() {
