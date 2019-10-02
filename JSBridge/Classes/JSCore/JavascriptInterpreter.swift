@@ -26,6 +26,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     private var pendingTimeouts: [Int: JSValue?] = [:]  // key: timeoutId
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
     private let jsBridgeBundle: Bundle!
+    private var lastException: JSValue?
     
     enum JSError: Error {
         case runtimeError(String)
@@ -118,17 +119,23 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
     }
 
-    public func evaluateString(js: String, cb: ((_: JSValue?) -> Void)?) {
+    public func evaluateString(js: String, cb: ((_: JSValue?, _: JSBridgeError?) -> Void)?) {
         runOnJSQueue { [weak self] in
+            self?.lastException = nil
             let ret = self?.jsContext.evaluateScript(js)
 
             // Making the call synchronous to make sure that the order is preserved
             DispatchQueue.main.sync {
-                cb?(ret)
+                if let lastException = self?.lastException {
+                    let error = JSBridgeError(type: .jsEvaluationFailed, message: lastException.toString())
+                    cb?(nil, error)
+                } else {
+                    cb?(ret, nil)
+                }
             }
         }
     }
-
+    
     // MARK: - calling JS functions
 
     open func call(object: JSValue?,
@@ -269,7 +276,10 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     private func setUpExceptionHandling() {
         // Catch exceptions
-        jsContext.exceptionHandler = { context, exception in
+        jsContext.exceptionHandler = { [weak self] context, exception in
+            
+            self?.lastException = exception
+            
             Logger.error("******")
             if let stacktrace = exception?.objectForKeyedSubscript("stack") {
                 Logger.error("JS ERROR: \(exception!)\n\(stacktrace)")

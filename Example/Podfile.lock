@@ -1,5 +1,5 @@
 PODS:
-  - JSBridge (0.1.0)
+  - JSBridge (0.1.2)
   - OHHTTPStubs/Core (8.0.0)
   - OHHTTPStubs/Default (8.0.0):
     - OHHTTPStubs/Core
@@ -27,7 +27,7 @@ EXTERNAL SOURCES:
     :path: "../"
 
 SPEC CHECKSUMS:
-  JSBridge: 0abe883fae307a60bc219d7869767dce9cacd58e
+  JSBridge: 4937f105b59def76dbe8f2587bf076537dd9cdf8
   OHHTTPStubs: 9cbce6364bec557cc3439aa6bb7514670d780881
 
 PODFILE CHECKSUM: 5b526215473012bc3a1b3827df4eb0a5b2819372

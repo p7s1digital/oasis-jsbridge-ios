@@ -66,7 +66,12 @@ class ViewController: UIViewController {
     @IBAction func call() {
         
         let js = textView.text ?? ""
-        interpreter.evaluateString(js: js) { (value) in
+        interpreter.evaluateString(js: js) { (value, error) in
+            if let error = error {
+                DispatchQueue.main.async {
+                    self.resultLabel.text = error.message
+                }
+            }
         }
     }
 }

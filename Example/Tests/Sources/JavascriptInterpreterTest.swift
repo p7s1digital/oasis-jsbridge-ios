@@ -81,7 +81,7 @@ class JavascriptInterpreterTest: XCTestCase {
         let expectation = self.expectation(description: "js")
 
         // WHEN
-        subject.evaluateString(js: "console.log(\"Logging evaluated string\");") { _ in
+        subject.evaluateString(js: "console.log(\"Logging evaluated string\");") { (_, _) in
             // THEN
             expectation.fulfill()
         }
@@ -135,7 +135,7 @@ class JavascriptInterpreterTest: XCTestCase {
             console.assert(false, "this is a failed console assert");
         """
         let expectation = self.expectation(description: "js")
-        subject.evaluateString(js: js) { _ in
+        subject.evaluateString(js: js) { (_, _) in
             // THEN
             expectation.fulfill()
         }

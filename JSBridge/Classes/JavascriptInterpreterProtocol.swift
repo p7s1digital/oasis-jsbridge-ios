@@ -20,7 +20,7 @@ import JavaScriptCore
 public protocol JavascriptInterpreterProtocol: class {
 
     func evaluateLocalFile(bundle: Bundle, filename: String, cb: (() -> Void)?)
-    func evaluateString(js: String, cb: ((_: JSValue?) -> Void)?)
+    func evaluateString(js: String, cb: ((_: JSValue?, _: JSBridgeError?) -> Void)?)
 
     func call(object: JSValue?,
               functionName: String,

@@ -35,6 +35,7 @@ open class JSBridgeError: NSObject, Error {
     public enum ErrorType: String {
         case unknown
         case jsError
+        case jsEvaluationFailed
         case jsConversionFailed
         case jsFunctionNotFound
         case jsPromiseFailed
@@ -58,6 +59,8 @@ open class JSBridgeError: NSObject, Error {
             return "Promise returned nil object"
         case .jsonDeserializationFailed:
             return "JSON deserialization failed"
+        case .jsEvaluationFailed:
+            return "JS evaluation failed"
         }
     }
     
