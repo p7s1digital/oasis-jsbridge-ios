@@ -58,6 +58,8 @@ typedef NS_ENUM(NSUInteger , ReadyState) {
 
 @interface XMLHttpRequest : NSObject <XMLHttpRequest>
 
+@property (nullable, nonatomic, copy) void (^loggingHandler)(NSString*_Nonnull);
+
 + (void)globalInit;
 + (void)globalInitWithURLSession:(nonnull NSURLSession*)urlSession;
 + (void)globalInitWithURLSession:(nonnull NSURLSession*)urlSession jsQueue:(nonnull dispatch_queue_t)jsQueue;

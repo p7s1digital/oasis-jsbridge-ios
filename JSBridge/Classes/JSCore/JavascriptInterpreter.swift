@@ -459,6 +459,9 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
                     self?.runPromiseQueue()
                 }
             }
+            instance.loggingHandler = { (message) in
+                Logger.verbose(message)
+            }
 
             let pointer = Unmanaged.passUnretained(instance).toOpaque()
             strongSelf.xmlHttpRequestInstances.addPointer(pointer)

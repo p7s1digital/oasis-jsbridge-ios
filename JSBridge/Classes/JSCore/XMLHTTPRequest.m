@@ -122,7 +122,7 @@ static NSPointerArray *_instances = nil;
     }
     [request setHTTPMethod:_httpMethod];
 
-    NSLog(@"Sending XHR request for URL: %@ \n%@", _url, [request allHTTPHeaderFields]);
+    NSLog(@"Sending XHR request for URL: %@ \n%@", url, [request allHTTPHeaderFields]);
 
     __block __weak XMLHttpRequest *weakSelf = self;
 
@@ -153,7 +153,13 @@ static NSPointerArray *_instances = nil;
 
             [strongSelf.onreadystatechange callWithArguments:@[]];
             [strongSelf.onload callWithArguments:@[]];
-            
+
+            void (^loggingHandler)(NSString*) = strongSelf.loggingHandler;
+            if (loggingHandler != nil) {
+                NSString *message = [NSString stringWithFormat:@"[JSBridge] request: %@ response: %ld %@", url, httpResponse.statusCode, strongSelf.responseText];
+                loggingHandler(message);
+            }
+
             // Make sure that the XMLHttpRequest instance can be deallocated by nulling the JSValue instances
             // (which retain the JSContext)
             [self clearJSValues];

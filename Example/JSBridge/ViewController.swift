@@ -49,6 +49,10 @@ class ViewController: UIViewController {
     }
     
     native.setLabel(fibonacci(100));
+
+    var req = XMLHttpRequest();
+    req.open("GET", "https://slashdot.com");
+    req.send();
 """
         
         createInterpreter()
