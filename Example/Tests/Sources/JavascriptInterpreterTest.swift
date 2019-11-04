@@ -235,6 +235,48 @@ class JavascriptInterpreterTest: XCTestCase {
         XCTAssertEqual(native.receivedEvents[2].name, "interval3")
     }
 
+    func testIsFunction() {
+        let javascriptInterpreter = JavascriptInterpreter()
+        javascriptInterpreter.evaluateString(js: """
+            var test = {
+              innerTest: {
+                testMethod: function(firstname, lastname, callback) {
+                }
+              }
+            };
+        """)
+
+        let expectation1 = self.expectation(description: "test.innerTest.testMethod")
+        javascriptInterpreter.isFunction(object: nil, functionName: "test.innerTest.testMethod") { (isFunction) in
+            if isFunction {
+                expectation1.fulfill()
+            }
+        }
+
+        let expectation2 = self.expectation(description: "test.innerTest")
+        javascriptInterpreter.isFunction(object: nil, functionName: "test.innerTest") { (isFunction) in
+            if !isFunction {
+                expectation2.fulfill()
+            }
+        }
+
+        let expectation3 = self.expectation(description: "test")
+        javascriptInterpreter.isFunction(object: nil, functionName: "test") { (isFunction) in
+            if !isFunction {
+                expectation3.fulfill()
+            }
+        }
+
+        let expectation4 = self.expectation(description: "foobar")
+        javascriptInterpreter.isFunction(object: nil, functionName: "foobar") { (isFunction) in
+            if !isFunction {
+                expectation4.fulfill()
+            }
+        }
+
+        self.waitForExpectations(timeout: 10)
+    }
+
     func testXMLHTTPRequest() {
         // GIVEN
         let url = "https://test.url/api/request"

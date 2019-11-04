@@ -212,6 +212,33 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         return promise
     }
 
+    public func isFunction(object: JSValue?,
+                           functionName: String,
+                           completion: @escaping (Bool) -> Void) {
+
+        runOnJSQueue {
+            let (value, name) = self.javascriptFunction(object: object, name: functionName)
+            if value.isUndefined {
+                completion(false)
+                return
+            }
+
+            guard let functionValue = value.objectForKeyedSubscript(name) else {
+                completion(false)
+                return
+            }
+
+            let isDefined = { (value: JSValue, key: String) in
+                return !(value.objectForKeyedSubscript(key)?.isUndefined ?? true)
+            }
+
+            let isFunction = (!functionValue.isUndefined) &&
+                                isDefined(functionValue, "apply") &&
+                                isDefined(functionValue, "call")
+            completion(isFunction)
+        }
+    }
+
     private func javascriptFunction(object: JSValue?, name: String) -> (JSValue, String) {
 
         var returnObject: JSValue = object ?? jsContext.globalObject

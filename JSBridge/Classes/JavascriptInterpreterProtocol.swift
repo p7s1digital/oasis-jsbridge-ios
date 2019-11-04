@@ -37,6 +37,9 @@ public protocol JavascriptInterpreterProtocol: class {
                               functionName: String,
                               arguments: [Any]) -> JavascriptValuePromise
 
+    func isFunction(object: JSValue?,
+                    functionName: String,
+                    completion: @escaping (Bool) -> Void)
 }
 
 public extension JavascriptInterpreterProtocol {
