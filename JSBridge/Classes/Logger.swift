@@ -18,7 +18,7 @@ import Foundation
 
 class Logger {
     
-    static var customLogger: JSBridgeLoggingProtocol?
+    static var customLoggers = [JSBridgeLoggingProtocol]()
     
     static func log(level: JSBridgeLoggingLevel,
                     message: String,
@@ -26,8 +26,8 @@ class Logger {
                     function: StaticString = #function,
                     line: UInt = #line) {
 
-        if let customLogger = customLogger {
-            customLogger.log(level: level, message: message, file: file, function: function, line: line)
+        customLoggers.forEach {
+            $0.log(level: level, message: message, file: file, function: function, line: line)
         }
     }
     

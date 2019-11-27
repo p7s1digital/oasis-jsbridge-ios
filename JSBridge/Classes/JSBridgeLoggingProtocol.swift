@@ -24,7 +24,7 @@ public enum JSBridgeLoggingLevel: String {
     case verbose
 }
 
-public protocol JSBridgeLoggingProtocol {
+public protocol JSBridgeLoggingProtocol: class {
     func log(level: JSBridgeLoggingLevel,
              message: String,
              file: StaticString,

@@ -60,7 +60,7 @@ class ViewController: UIViewController {
 
     func createInterpreter() {
         
-        JSBridgeConfiguration.configure(logger: TestLogger())
+        JSBridgeConfiguration.add(logger: TestLogger())
         interpreter = JavascriptInterpreter()
 
         native = Native(label: resultLabel)

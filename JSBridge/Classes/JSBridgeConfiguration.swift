@@ -18,7 +18,10 @@ import Foundation
 
 public class JSBridgeConfiguration {
     
-    public static func configure(logger: JSBridgeLoggingProtocol) {
-        Logger.customLogger = logger
+    public static func add(logger: JSBridgeLoggingProtocol) {
+        Logger.customLoggers.append(logger)
+    }
+    public static func remove(logger: JSBridgeLoggingProtocol) {
+        Logger.customLoggers.removeAll { $0 === logger }
     }
 }
