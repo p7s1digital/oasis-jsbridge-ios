@@ -104,6 +104,8 @@ public class JavascriptValuePromise {
                     return
                 }
                 self.thenCallback?(value)
+                self.thenCallback = nil
+                self.catchCallback = nil
             }
         }
         promiseValue.invokeMethod("then", withArguments: [unsafeBitCast(thenCallback, to: AnyObject.self)])
@@ -118,6 +120,8 @@ public class JavascriptValuePromise {
                     return
                 }
                 self.catchCallback?(JSBridgeError.from(jsValue: value))
+                self.thenCallback = nil
+                self.catchCallback = nil
             }
         }
         promiseValue.invokeMethod("catch", withArguments: [unsafeBitCast(catchCallback, to: AnyObject.self)])
