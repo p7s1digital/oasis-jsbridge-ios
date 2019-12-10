@@ -1,5 +1,5 @@
 PODS:
-  - JSBridge (0.1.2)
+  - JSBridge (0.1.9)
   - OHHTTPStubs/Core (8.0.0)
   - OHHTTPStubs/Default (8.0.0):
     - OHHTTPStubs/Core
@@ -19,7 +19,7 @@ DEPENDENCIES:
   - OHHTTPStubs/Swift
 
 SPEC REPOS:
-  https://github.com/cocoapods/specs.git:
+  trunk:
     - OHHTTPStubs
 
 EXTERNAL SOURCES:
@@ -27,9 +27,9 @@ EXTERNAL SOURCES:
     :path: "../"
 
 SPEC CHECKSUMS:
-  JSBridge: 4937f105b59def76dbe8f2587bf076537dd9cdf8
+  JSBridge: 129845902a5acea8809f01e33d67f359b2203947
   OHHTTPStubs: 9cbce6364bec557cc3439aa6bb7514670d780881
 
 PODFILE CHECKSUM: 5b526215473012bc3a1b3827df4eb0a5b2819372
 
-COCOAPODS: 1.7.2
+COCOAPODS: 1.8.4
