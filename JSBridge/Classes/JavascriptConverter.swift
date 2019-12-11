@@ -46,27 +46,17 @@ extension JSValue {
 
 public class JavascriptConverter<T: Codable> {
 
-    var value: JSManagedValue?
+    let obj: T?
 
     public init(value: JSValue) {
-        let managedValue = JSManagedValue(value: value, andOwner: self)
-        value.context.virtualMachine.addManagedReference(managedValue, withOwner: self)
-        self.value = managedValue
-    }
-
-    deinit {
-        self.value?.value.context.virtualMachine.removeManagedReference(self.value, withOwner: self)
-        self.value = nil
+        self.obj = type(of: self).convert(value: value)
     }
 
     public func swiftObject() -> T? {
-        guard let v = value?.value else {
-            return nil
-        }
-        return convert(value: v)
+        return obj
     }
 
-    private func convert(value: JSValue) -> T? {
+    private static func convert(value: JSValue) -> T? {
 
         // we use JSCore to convert the JSValue to JSON string
         guard let stringifyFunction = value.context.globalObject.objectForKeyedSubscript("__jsBridge__stringify")
