@@ -24,4 +24,15 @@ public class JSBridgeConfiguration {
     public static func remove(logger: JSBridgeLoggingProtocol) {
         Logger.customLoggers.removeAll { $0 === logger }
     }
+
+    static var lastConfiguredLogger: JSBridgeLoggingProtocol?
+    public static func configure(logger: JSBridgeLoggingProtocol) {
+        NSLog("JSBridge error - depreceated API JSBridgeConfiguration.configure, please use add/remove methods.")
+
+        if let logger = lastConfiguredLogger {
+            remove(logger: logger)
+        }
+        lastConfiguredLogger = logger
+        add(logger: logger)
+    }
 }
