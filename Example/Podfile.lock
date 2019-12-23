@@ -1,5 +1,5 @@
 PODS:
-  - JSBridge (0.1.9)
+  - OasisJSBridge (0.1.12)
   - OHHTTPStubs/Core (8.0.0)
   - OHHTTPStubs/Default (8.0.0):
     - OHHTTPStubs/Core
@@ -15,7 +15,7 @@ PODS:
     - OHHTTPStubs/Default
 
 DEPENDENCIES:
-  - JSBridge (from `../`)
+  - OasisJSBridge (from `../`)
   - OHHTTPStubs/Swift
 
 SPEC REPOS:
@@ -23,13 +23,13 @@ SPEC REPOS:
     - OHHTTPStubs
 
 EXTERNAL SOURCES:
-  JSBridge:
+  OasisJSBridge:
     :path: "../"
 
 SPEC CHECKSUMS:
-  JSBridge: 129845902a5acea8809f01e33d67f359b2203947
+  OasisJSBridge: 38e296a41b1ba9c114cf5ef4371ea98509d66285
   OHHTTPStubs: 9cbce6364bec557cc3439aa6bb7514670d780881
 
-PODFILE CHECKSUM: 5b526215473012bc3a1b3827df4eb0a5b2819372
+PODFILE CHECKSUM: f135e1301cb3257f53e305c05f78549b56904aa6
 
 COCOAPODS: 1.8.4

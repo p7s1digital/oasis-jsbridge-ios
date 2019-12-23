@@ -1,7 +1,7 @@
 
 Pod::Spec.new do |s|
-  s.name             = 'JSBridge'
-  s.version          = '0.1.11'
+  s.name             = 'OasisJSBridge'
+  s.version          = '0.2.0'
   s.summary          = 'JavaScript bridge for iOS using JavascriptCore.'
   s.description      = "JSBridge, javascript bridge for iOS using JavascriptCore."
   s.homepage         = 'https://gitlab.p7s1.io/oasis-player/native-jsbridge-ios'

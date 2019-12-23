@@ -52,7 +52,6 @@
 		D703933D2338CFAA0031550F /* JavascriptInterpreterTest.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = JavascriptInterpreterTest.swift; path = Sources/JavascriptInterpreterTest.swift; sourceTree = "<group>"; };
 		D703933E2338CFAA0031550F /* Tests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Tests.swift; path = Sources/Tests.swift; sourceTree = "<group>"; };
 		D70393412338CFB40031550F /* test.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; name = test.js; path = Resources/test.js; sourceTree = "<group>"; };
-		D703934A233904460031550F /* JSBridge.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = JSBridge.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -99,7 +98,6 @@
 		607FACC71AFB9204008FA782 = {
 			isa = PBXGroup;
 			children = (
-				D703934A233904460031550F /* JSBridge.framework */,
 				607FACF51AFB993E008FA782 /* Podspec Metadata */,
 				607FACD21AFB9204008FA782 /* Example for JSBridge */,
 				607FACE81AFB9204008FA782 /* Tests */,
@@ -343,11 +341,11 @@
 			);
 			inputPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-JSBridge_Example/Pods-JSBridge_Example-frameworks.sh",
-				"${BUILT_PRODUCTS_DIR}/JSBridge/JSBridge.framework",
+				"${BUILT_PRODUCTS_DIR}/OasisJSBridge/OasisJSBridge.framework",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/JSBridge.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/OasisJSBridge.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

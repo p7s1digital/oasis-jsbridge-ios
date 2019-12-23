@@ -1,7 +1,7 @@
 use_frameworks!
 
 target 'JSBridge_Example' do
-  pod 'JSBridge', :path => '../'
+  pod 'OasisJSBridge', :path => '../'
   platform :ios, '9.0'
 
   target 'JSBridge_Tests' do

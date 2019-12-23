@@ -18,7 +18,7 @@ import XCTest
 import OHHTTPStubs
 import JavaScriptCore
 
-@testable import JSBridge
+@testable import OasisJSBridge
 
 @objc protocol NativeProtocol: JSExport {
     func sendEvent(_ eventName: String, _ payload: Any?)

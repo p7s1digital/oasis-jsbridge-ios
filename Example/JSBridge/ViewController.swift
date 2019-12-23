@@ -15,7 +15,7 @@
  */
 
 import UIKit
-import JSBridge
+import OasisJSBridge
 
 class TestLogger: JSBridgeLoggingProtocol {
     func log(level: JSBridgeLoggingLevel, message: String, file: StaticString, function: StaticString, line: UInt) {

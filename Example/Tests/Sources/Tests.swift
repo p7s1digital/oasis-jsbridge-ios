@@ -1,5 +1,5 @@
 import XCTest
-import JSBridge
+import OasisJSBridge
 
 class Tests: XCTestCase {
     
