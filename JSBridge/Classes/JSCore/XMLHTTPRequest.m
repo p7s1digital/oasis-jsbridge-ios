@@ -156,7 +156,7 @@ static NSPointerArray *_instances = nil;
 
             void (^loggingHandler)(NSString*) = strongSelf.loggingHandler;
             if (loggingHandler != nil) {
-                NSString *message = [NSString stringWithFormat:@"[JSBridge] request: %@ response: %ld %@", url, httpResponse.statusCode, strongSelf.responseText];
+                NSString *message = [NSString stringWithFormat:@"[JSBridge] request: %@ response: %ld %@", url, (long)httpResponse.statusCode, strongSelf.responseText];
                 loggingHandler(message);
             }
 

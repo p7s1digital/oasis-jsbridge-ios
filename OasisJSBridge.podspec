@@ -1,7 +1,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'OasisJSBridge'
-  s.version          = '0.2.0'
+  s.version          = '0.2.1'
   s.summary          = 'JavaScript bridge for iOS using JavascriptCore.'
   s.description      = "JSBridge, javascript bridge for iOS using JavascriptCore."
   s.homepage         = 'https://gitlab.p7s1.io/oasis-player/native-jsbridge-ios'
@@ -22,6 +22,6 @@ Pod::Spec.new do |s|
 
   # s.public_header_files = 'Pod/Classes/**/*.h'
   # s.dependency 'AFNetworking', '~> 2.3'
-  s.frameworks = 'UIKit', 'JavascriptCore'
+  s.frameworks = 'UIKit', 'JavaScriptCore'
 end
 
