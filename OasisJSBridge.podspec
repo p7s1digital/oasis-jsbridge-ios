@@ -7,7 +7,7 @@ Pod::Spec.new do |s|
   s.homepage         = 'https://gitlab.p7s1.io/oasis-player/native-jsbridge-ios'
   s.license          = { :type => 'Apache License', :file => 'LICENSE' }
   s.author           = { 'cmps' => 'cmps@prosiebensat1digital.de' }
-  s.source           = { :git => 'https://gitlab.p7s1.io/oasis-player/native-jsbridge-ios.git', :tag => s.version.to_s }
+  s.source           = { :git => 'git@gitlab.p7s1.io:oasis-player/native-jsbridge-ios.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '9.0'
   s.tvos.deployment_target = '9.0'
