@@ -39,6 +39,36 @@ import JavaScriptCore
     }
 }
 
+@objc protocol AdSchedulerProtocol: JSExport {
+    func update(_ payload: Any?) -> JSValue
+    func fullfillExpectationAfterResolve()
+}
+@objc class AdScheduler: NSObject, AdSchedulerProtocol {
+
+    let interpreter: JavascriptInterpreterProtocol
+    let expectation: XCTestExpectation
+
+    init(interpreter: JavascriptInterpreterProtocol, expectation: XCTestExpectation) {
+        self.interpreter = interpreter
+        self.expectation = expectation
+    }
+
+    func update(_ payload: Any?) -> JSValue {
+        let promiseWrapper = NativePromise(interpreter: interpreter)
+
+        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 1.0) {
+            promiseWrapper.resolve(arguments: [["native" : "ios"]])
+        }
+
+        return promiseWrapper.promise
+    }
+
+    func fullfillExpectationAfterResolve() {
+        expectation.fulfill()
+    }
+}
+
+
 class JavascriptInterpreterTest: XCTestCase {
 
     private let native = Native()
@@ -455,6 +485,26 @@ class JavascriptInterpreterTest: XCTestCase {
         }
 
         self.waitForExpectations(timeout: 5)
+    }
+
+    func testNativePromise() {
+        let js = JavascriptInterpreter()
+        js.evaluateString(js: """
+            addScheduler = (scheduler) => {
+              setTimeout( () => {
+                scheduler.update({"id": "123"}).then( (currentAdSchedule) => {
+                  scheduler.fullfillExpectationAfterResolve()
+                })
+              }, 1000)
+            }
+            """)
+
+        let callbackExpectation = self.expectation(description: "callback")
+        let scheduler = AdScheduler(interpreter: js, expectation: callbackExpectation)
+
+        js.call(object: nil, functionName: "addScheduler", arguments: [scheduler], completion: {_ in })
+
+        self.waitForExpectations(timeout: 10)
     }
 
     // This test ensures that the JsContext instance is not retained after destroying the

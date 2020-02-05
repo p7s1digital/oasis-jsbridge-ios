@@ -19,8 +19,11 @@ import JavaScriptCore
 
 open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
+    private static let JSQUEUE_LABEL = "JSBridge.JSSerialQueue"
+    private static let jsQueueKey = DispatchSpecificKey<String>()
+
     public var jsContext: JSContext!
-    private var jsQueue = DispatchQueue(label: "JSBridge.JSSerialQueue")
+    private let jsQueue: DispatchQueue
     private var urlSession = JavascriptInterpreter.createURLSession()
     private var timeoutIdCounter = 0
     private var pendingTimeouts: [Int: JSValue?] = [:]  // key: timeoutId
@@ -40,10 +43,14 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
         jsBridgeBundle = Bundle(for: JavascriptInterpreter.self)
 
+        jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
+        jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
+
         setUpExceptionHandling()
         setUpGlobal()
         setUpConsole()
         setUpPromise()
+        setupNativePromise()
         setUpStringify()
         setUpTimeoutAndInterval()
         setUpXMLHttpRequest()
@@ -294,10 +301,20 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     // MARK: - Private methods
 
+    func isRunningOnJSQueue() -> Bool {
+        return DispatchQueue.getSpecific(key: JavascriptInterpreter.jsQueueKey) == JavascriptInterpreter.JSQUEUE_LABEL
+    }
+
     func runOnJSQueue(_ block: @escaping () -> Void) {
-        jsQueue.async { [weak self] in
+
+        if isRunningOnJSQueue() {
             block()
-            self?.runPromiseQueue()
+            runPromiseQueue()
+        } else {
+            jsQueue.async { [weak self] in
+                block()
+                self?.runPromiseQueue()
+            }
         }
     }
 
@@ -373,6 +390,19 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         // on iOS 9 Promise is non-existing
         // since iOS 10 Promise are working on JSCore
         evaluateLocalFile(bundle: jsBridgeBundle, filename: "promise.js", cb: {})
+    }
+
+    private func setupNativePromise() {
+        evaluateString(js: """
+            jsBridgeCreatePromiseWrapper = () => {
+              var wrapper = {}
+              wrapper.promise = new Promise((resolve, reject) => {
+                wrapper.resolve = resolve
+                wrapper.reject = reject
+              })
+              return wrapper
+            }
+            """)
     }
 
     private func setUpStringify() {
