@@ -22,17 +22,7 @@ public class NativePromise {
 
         self.interpreter = interpreter
 
-        let semaphore = DispatchSemaphore(value: 0)
-
-        var promiseWrapper: JSValue?
-        interpreter.call(functionName: "jsBridgeCreatePromiseWrapper", arguments: []) { (wrapper) in
-            promiseWrapper = wrapper
-            semaphore.signal()
-        }
-
-        semaphore.wait()
-
-        self.promiseWrapper = promiseWrapper
+        self.promiseWrapper = interpreter.callSynchronously(object: nil, functionName: "jsBridgeCreatePromiseWrapper", arguments: [])
     }
 
     public func resolve(arguments: [Any]) {

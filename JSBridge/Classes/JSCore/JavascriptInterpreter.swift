@@ -163,6 +163,16 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
     }
 
+    open func callSynchronously(object: JSValue?,
+              functionName: String,
+              arguments: [Any]) -> JSValue {
+
+        assert(isRunningOnJSQueue())
+
+        let (object, function) = javascriptFunction(object: object, name: functionName)
+        return object.invokeMethod(function, withArguments: converted(arguments))
+    }
+
     public func callWithCallback<T: Codable>(object: JSValue?,
                                       functionName: String,
                                       arguments: [Any],

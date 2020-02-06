@@ -22,6 +22,8 @@ public protocol JavascriptInterpreterProtocol: class {
     func evaluateLocalFile(bundle: Bundle, filename: String, cb: (() -> Void)?)
     func evaluateString(js: String, cb: ((_: JSValue?, _: JSBridgeError?) -> Void)?)
 
+    func callSynchronously(object: JSValue?, functionName: String, arguments: [Any]) -> JSValue
+
     func call(object: JSValue?,
               functionName: String,
               arguments: [Any],
