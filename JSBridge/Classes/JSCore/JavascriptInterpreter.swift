@@ -130,14 +130,15 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         runOnJSQueue { [weak self] in
             self?.lastException = nil
             let ret = self?.jsContext.evaluateScript(js)
+            let keepCallback = cb
 
             // Making the call synchronous to make sure that the order is preserved
             DispatchQueue.main.sync {
                 if let lastException = self?.lastException {
                     let error = JSBridgeError(type: .jsEvaluationFailed, message: lastException.toString())
-                    cb?(nil, error)
+                    keepCallback?(nil, error)
                 } else {
-                    cb?(ret, nil)
+                    keepCallback?(ret, nil)
                 }
             }
         }
@@ -153,12 +154,13 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         runOnJSQueue { [weak self] in
 
             guard let strongSelf = self else { return }
+            let keepCompletion = completion
 
             let (object, function) = strongSelf.javascriptFunction(object: object, name: functionName)
 
             let value = object.invokeMethod(function, withArguments: strongSelf.converted(arguments))
             DispatchQueue.main.async {
-                completion(value)
+                keepCompletion(value)
             }
         }
     }
