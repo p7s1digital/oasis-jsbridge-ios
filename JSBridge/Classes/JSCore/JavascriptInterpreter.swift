@@ -349,13 +349,9 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
 
     private func setUpGlobal() {
-        // TODO: move window, document and navigator to a common JS module
         let str = """
             var global = this;
             var window = this;
-            var location = { href: "dummyLocation" };
-            var document = { referred: "dummyDocumentReferrer" };
-            var navigator = { product: "ReactNative" };
         """
         jsContext.evaluateScript(str)
     }
