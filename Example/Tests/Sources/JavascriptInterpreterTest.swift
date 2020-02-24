@@ -39,6 +39,13 @@ import JavaScriptCore
     }
 }
 
+@objc protocol VehicleProtocol: JSExport {
+    var brand: String? { get }
+}
+@objc class Vehicle: NSObject, VehicleProtocol {
+    var brand: String?
+}
+
 @objc protocol AdSchedulerProtocol: JSExport {
     func update(_ payload: Any?) -> JSValue
     func fullfillExpectationAfterResolve()
@@ -265,6 +272,32 @@ class JavascriptInterpreterTest: XCTestCase {
         XCTAssertEqual(native.receivedEvents[2].name, "interval3")
     }
 
+    func testSetObject() {
+        // GIVEN
+        let javascriptInterpreter = JavascriptInterpreter()
+
+        // WHEN
+        let getName: @convention(block) (String) -> String? = { key in
+            return "Firstname Lastname"
+        }
+
+        let expectation = self.expectation(description: "testSetObject")
+        javascriptInterpreter.setObject(getName, forKey: "getName")
+
+        javascriptInterpreter.evaluateString(js: """
+            getName()
+        """) { (value, _) in
+            if let value = value,
+               value.isString,
+               value.toString() == "Firstname Lastname" {
+                expectation.fulfill()
+            }
+        }
+
+        // THEN
+        self.waitForExpectations(timeout: 3)
+    }
+
     func testIsFunction() {
         let javascriptInterpreter = JavascriptInterpreter()
         javascriptInterpreter.evaluateString(js: """
@@ -386,6 +419,7 @@ class JavascriptInterpreterTest: XCTestCase {
         var firstname: String?
         var lastname: String?
     }
+
     func testCallbackCall() {
         let javascriptInterpreter = JavascriptInterpreter()
         javascriptInterpreter.evaluateString(js: """
@@ -485,6 +519,30 @@ class JavascriptInterpreterTest: XCTestCase {
         }
 
         self.waitForExpectations(timeout: 5)
+    }
+
+    func testExample() {
+        let toUppercase: @convention(block) (String) -> String = { $0.uppercased() }
+        let expectation = self.expectation(description: "callback")
+
+        let interpreter = JavascriptInterpreter()
+        interpreter.setObject(toUppercase, forKey: "toUppercase")
+        interpreter.evaluateString(js: """
+            var testObject = {
+              testMethod: function(vehicle, callback) {
+                return toUppercase(vehicle.brand)
+              }
+            };
+        """)
+        let vehicle = Vehicle()
+        vehicle.brand = "bmw"
+        interpreter.call(object: nil, functionName: "testObject.testMethod", arguments: [vehicle], completion: { value in
+            XCTAssert(value?.isString ?? false)
+            XCTAssertEqual(value?.toString(), "BMW")
+            expectation.fulfill()
+        })
+
+        self.waitForExpectations(timeout: 3)
     }
 
     func testNativePromise() {

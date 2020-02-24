@@ -232,6 +232,10 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         return promise
     }
 
+    public func setObject(_ object: Any!, forKey key: String) {
+        jsContext.setObject(object, forKeyedSubscript: key as NSString)
+    }
+
     public func isFunction(object: JSValue?,
                            functionName: String,
                            completion: @escaping (Bool) -> Void) {
