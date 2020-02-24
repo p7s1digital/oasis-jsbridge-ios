@@ -46,15 +46,15 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
         jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
 
-        setUpExceptionHandling()
-        setUpGlobal()
-        setUpConsole()
-        setUpPromise()
+        setupExceptionHandling()
+        setupGlobal()
+        setupConsole()
+        setupPromise()
         setupNativePromise()
-        setUpStringify()
-        setUpTimeoutAndInterval()
-        setUpXMLHttpRequest()
-        setUpLoadURL()
+        setupStringify()
+        setupTimeoutAndInterval()
+        setupXMLHttpRequest()
+        setupLoadURL()
         setupLocalStorage()
     }
 
@@ -331,7 +331,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
     }
 
-    private func setUpExceptionHandling() {
+    private func setupExceptionHandling() {
         // Catch exceptions
         jsContext.exceptionHandler = { [weak self] context, exception in
             
@@ -349,7 +349,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
     }
 
-    private func setUpGlobal() {
+    private func setupGlobal() {
         let str = """
             var global = this;
             var window = this;
@@ -357,7 +357,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         jsContext.evaluateScript(str)
     }
 
-    private func setUpConsole() {
+    private func setupConsole() {
         consoleHelper(methodName: "log", level: .debug)
         consoleHelper(methodName: "trace", level: .debug)
         consoleHelper(methodName: "info", level: .info)
@@ -391,7 +391,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     static let needsPromisePolyfill = ProcessInfo().operatingSystemVersion.majorVersion < 10
 
-    private func setUpPromise() {
+    private func setupPromise() {
 
         guard JavascriptInterpreter.needsPromisePolyfill else { return }
 
@@ -414,7 +414,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             """)
     }
 
-    private func setUpStringify() {
+    private func setupStringify() {
         evaluateLocalFile(bundle: jsBridgeBundle, filename: "customStringify.js", cb: {})
     }
 
@@ -477,7 +477,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     // MARK: - Timeout and Interval
 
-    private func setUpTimeoutAndInterval() {
+    private func setupTimeoutAndInterval() {
         setTimeoutHelper(setFunctionName: "setTimeout", clearFunctionName: "clearTimeout", doRepeat: false)
         setTimeoutHelper(setFunctionName: "setInterval", clearFunctionName: "clearInterval", doRepeat: true)
     }
@@ -562,7 +562,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         return URLSession(configuration: config)
     }
 
-    private func setUpXMLHttpRequest() {
+    private func setupXMLHttpRequest() {
         XMLHttpRequest.globalInit(with: urlSession, jsQueue: jsQueue)
         XMLHttpRequest.extend(jsContext, onNewInstance: { [weak self] instance in
             guard let strongSelf = self else {
@@ -584,7 +584,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         })
     }
 
-    private func setUpLoadURL() {
+    private func setupLoadURL() {
         // loadUrl(url, cb)
         let loadUrl: @convention(block) (String, JSValue?) -> Void = { [weak self] urlString, v in
             Logger.debug("Native loadUrl(\(urlString))")
