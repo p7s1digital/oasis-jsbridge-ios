@@ -507,6 +507,48 @@ class JavascriptInterpreterTest: XCTestCase {
         self.waitForExpectations(timeout: 10)
     }
 
+    func testLocalStorage() {
+        let js = JavascriptInterpreter()
+
+        // remove in case previous failed test set the item,
+        // setItem and check if getItem returns the same object
+        let setItemExpectation = self.expectation(description: "setItem")
+        js.evaluateString(js: """
+            localStorage.removeItem("test")
+            localStorage.setItem("test", { id: 123 })
+            let test = localStorage.getItem("test")
+            test["id"]
+        """) { value, error in
+            if value?.toInt32() == 123 {
+                setItemExpectation.fulfill()
+            }
+        }
+
+        // test if item from previous call is still available
+        let getItemExpectation = self.expectation(description: "getItem")
+        js.evaluateString(js: """
+            let test2 = localStorage.getItem("test")
+            test2["id"]
+        """) { value, error in
+            if value?.toInt32() == 123 {
+                getItemExpectation.fulfill()
+            }
+        }
+
+        // test clear(), getItem should return undefined
+        let clearExpectation = self.expectation(description: "clear")
+        js.evaluateString(js: """
+            localStorage.clear()
+            localStorage.getItem("test")
+        """) { value, error in
+            if value?.isUndefined ?? false {
+                clearExpectation.fulfill()
+            }
+        }
+
+        self.waitForExpectations(timeout: 1)
+    }
+
     // This test ensures that the JsContext instance is not retained after destroying the
     // JavascriptInterpreter. This can be the for example the case if a JSValue instance is stored
     // in an exported object (like XMLHttpRequest) and not properly nulled.
