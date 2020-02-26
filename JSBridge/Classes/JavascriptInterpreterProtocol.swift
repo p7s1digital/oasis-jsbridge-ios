@@ -39,6 +39,7 @@ public protocol JavascriptInterpreterProtocol: class {
                               functionName: String,
                               arguments: [Any]) -> JavascriptValuePromise
 
+    func setObject(_ object: Any!, forKey: String)
     func isFunction(object: JSValue?,
                     functionName: String,
                     completion: @escaping (Bool) -> Void)

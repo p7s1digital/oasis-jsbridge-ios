@@ -46,15 +46,16 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
         jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
 
-        setUpExceptionHandling()
-        setUpGlobal()
-        setUpConsole()
-        setUpPromise()
+        setupExceptionHandling()
+        setupGlobal()
+        setupConsole()
+        setupPromise()
         setupNativePromise()
-        setUpStringify()
-        setUpTimeoutAndInterval()
-        setUpXMLHttpRequest()
-        setUpLoadURL()
+        setupStringify()
+        setupTimeoutAndInterval()
+        setupXMLHttpRequest()
+        setupLoadURL()
+        setupLocalStorage()
     }
 
     deinit {
@@ -231,6 +232,10 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         return promise
     }
 
+    public func setObject(_ object: Any!, forKey key: String) {
+        jsContext.setObject(object, forKeyedSubscript: key as NSString)
+    }
+
     public func isFunction(object: JSValue?,
                            functionName: String,
                            completion: @escaping (Bool) -> Void) {
@@ -330,7 +335,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
     }
 
-    private func setUpExceptionHandling() {
+    private func setupExceptionHandling() {
         // Catch exceptions
         jsContext.exceptionHandler = { [weak self] context, exception in
             
@@ -348,7 +353,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
     }
 
-    private func setUpGlobal() {
+    private func setupGlobal() {
         let str = """
             var global = this;
             var window = this;
@@ -356,7 +361,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         jsContext.evaluateScript(str)
     }
 
-    private func setUpConsole() {
+    private func setupConsole() {
         consoleHelper(methodName: "log", level: .debug)
         consoleHelper(methodName: "trace", level: .debug)
         consoleHelper(methodName: "info", level: .info)
@@ -390,7 +395,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     static let needsPromisePolyfill = ProcessInfo().operatingSystemVersion.majorVersion < 10
 
-    private func setUpPromise() {
+    private func setupPromise() {
 
         guard JavascriptInterpreter.needsPromisePolyfill else { return }
 
@@ -413,7 +418,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             """)
     }
 
-    private func setUpStringify() {
+    private func setupStringify() {
         evaluateLocalFile(bundle: jsBridgeBundle, filename: "customStringify.js", cb: {})
     }
 
@@ -424,9 +429,59 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
     }
 
+    // MARK: - Local Storage
+
+    func setupLocalStorage() {
+
+        let userDefaultsPrefix = "jsBridge"
+
+        let setItem: @convention(block) (String, String) -> Void = { key, value in
+            UserDefaults.standard.set(value, forKey: "\(userDefaultsPrefix)key")
+        }
+        jsContext.setObject(setItem, forKeyedSubscript: "jsBridgeLocalStorageSetItem" as NSString)
+        let getItem: @convention(block) (String) -> String? = { key in
+            return UserDefaults.standard.value(forKey: "\(userDefaultsPrefix)key") as? String
+        }
+        jsContext.setObject(getItem, forKeyedSubscript: "jsBridgeLocalStorageGetItem" as NSString)
+        let removeItem: @convention(block) (String, String) -> Void = { key, value in
+            UserDefaults.standard.set(value, forKey: "\(userDefaultsPrefix)key")
+        }
+        jsContext.setObject(removeItem, forKeyedSubscript: "jsBridgeLocalStorageRemoveItem" as NSString)
+        let clear: @convention(block) () -> Void = {
+            let keys = UserDefaults.standard.dictionaryRepresentation().keys.filter { $0.hasPrefix(userDefaultsPrefix) }
+            for key in keys {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+        jsContext.setObject(clear, forKeyedSubscript: "jsBridgeLocalStorageClear" as NSString)
+
+        evaluateString(js: """
+            localStorage = {
+                setItem: (key, value) => {
+                    let json = JSON.stringify(value)
+                    jsBridgeLocalStorageSetItem(key, json)
+                },
+                getItem: (key) => {
+                    let json = jsBridgeLocalStorageGetItem(key)
+                    if (json == undefined) {
+                        return json
+                    }
+                    return JSON.parse(json)
+                },
+                removeItem: (key) => {
+                    return jsBridgeLocalStorageRemoveItem(key)
+                },
+                clear: () => {
+                    jsBridgeLocalStorageClear()
+                }
+            }
+            window.localStorage = localStorage
+            """)
+    }
+
     // MARK: - Timeout and Interval
 
-    private func setUpTimeoutAndInterval() {
+    private func setupTimeoutAndInterval() {
         setTimeoutHelper(setFunctionName: "setTimeout", clearFunctionName: "clearTimeout", doRepeat: false)
         setTimeoutHelper(setFunctionName: "setInterval", clearFunctionName: "clearInterval", doRepeat: true)
     }
@@ -511,7 +566,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         return URLSession(configuration: config)
     }
 
-    private func setUpXMLHttpRequest() {
+    private func setupXMLHttpRequest() {
         XMLHttpRequest.globalInit(with: urlSession, jsQueue: jsQueue)
         XMLHttpRequest.extend(jsContext, onNewInstance: { [weak self] instance in
             guard let strongSelf = self else {
@@ -533,7 +588,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         })
     }
 
-    private func setUpLoadURL() {
+    private func setupLoadURL() {
         // loadUrl(url, cb)
         let loadUrl: @convention(block) (String, JSValue?) -> Void = { [weak self] urlString, v in
             Logger.debug("Native loadUrl(\(urlString))")

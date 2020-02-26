@@ -1,4 +1,4 @@
-🏝 JSBridge
+🏝 Oasis JSBridge
 ===============
 
 Evaluate JavaScript code and map values, objects and functions between Swift and JavaScript on iOS.  
@@ -10,18 +10,54 @@ Powered by:
 ## Features
 
 Based on [JavascriptCore][JavascriptCore] with additional support for:
- * two-way support for JS promises (mapped to Kotlin via Deferred or suspending functions)
- * polyfills for some JS runtime features (e.g. setTimeout, XmlHttpRequest, console)
-
-
-## Usage
+ * two-way support for JS promises
+ * polyfills for some JS runtime features (e.g. setTimeout, XmlHttpRequest, console, localStorage)
 
 
 ## Supported types
 
+OasisJSBridge supports the same types as JavaScriptCore does. Swift (ObjC) types can be exported
+to javascript using JSExport protocol.
 
-## TODO:
-* code samples
+Swift does not support promise/deffered calls yet, to support such APIs OasisJSBridge offers
+JavascriptPromise and NativePromise objects.
+
+
+## Usage
+
+```swift
+// define Swift type that can be sent to Javascript
+@objc protocol VehicleProtocol: JSExport {
+    var brand: String? { get }
+}
+@objc class Vehicle: NSObject, VehicleProtocol {
+    var brand: String?
+}
+let vehicle = Vehicle()
+vehicle.brand = "bmw"
+
+// create an instance of JavascriptInterpreter
+let interpreter = JavascriptInterpreter()
+
+// define a function in Swift
+let toUppercase: @convention(block) (String) -> String = { $0.uppercased() }
+interpreter.setObject(toUppercase, forKey: "toUppercase")
+
+// load Javascript, use previously defined toUppercase function
+interpreter.evaluateString(js: """
+    var testObject = {
+      testMethod: function(vehicle, callback) {
+        return toUppercase(vehicle.brand)
+      }
+    };
+""")
+
+// call Javascript function
+interpreter.call(object: nil, functionName: "testObject.testMethod", arguments: [vehicle], completion: { value in
+    XCTAssertEqual(value?.toString(), "BMW")
+})
+
+```
 
 
 ## License
