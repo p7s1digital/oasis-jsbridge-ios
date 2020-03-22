@@ -489,6 +489,10 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     func setTimeoutHelper(setFunctionName: String, clearFunctionName: String, doRepeat: Bool) {
         // setTimeout(cb, msecs) -> String
         let setTimeout: @convention(block) (JSValue, Double) -> String? = { [weak self] function, msecs in
+
+            let arguments = Array(JSContext.currentArguments()[2...])
+            print("### arguments=\(arguments)")
+
             // Timeout id
             self?.timeoutIdCounter += 1
             guard let timeoutId = self?.timeoutIdCounter else {
@@ -511,7 +515,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
                 }
 
                 Logger.verbose("Timeout \(timeoutId) triggered")
-                function?.call(withArguments: [])
+                function?.call(withArguments: arguments)
 
                 if doRepeat {
                     Logger.verbose("Repeating timeout \(timeoutId)...")
