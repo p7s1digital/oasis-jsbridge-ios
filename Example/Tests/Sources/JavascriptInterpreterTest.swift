@@ -272,6 +272,29 @@ class JavascriptInterpreterTest: XCTestCase {
         XCTAssertEqual(native.receivedEvents[2].name, "interval3")
     }
 
+    func testSetTimeoutWithArguments() {
+        // GIVEN
+        let subject = createJavascriptInterpreter()
+
+        // WHEN
+        let js = """
+            setTimeout(function(a,b) {
+                if (a == 1 && b == "blah") {
+                    native.sendEvent("timeout", {done: true});
+                }
+            }, 10, 1, "blah");
+        """
+        subject.evaluateString(js: js, cb: nil)
+
+        let expectation = self.expectation(description: "js")
+        native.resetAndSetExpectation(expectation)
+
+        self.waitForExpectations(timeout: 10)
+
+        // THEN
+        XCTAssertEqual(native.receivedEvents.count, 1)
+    }
+
     func testSetObject() {
         // GIVEN
         let javascriptInterpreter = JavascriptInterpreter()
