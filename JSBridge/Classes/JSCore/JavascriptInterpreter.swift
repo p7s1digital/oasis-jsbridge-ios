@@ -493,7 +493,6 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         let setTimeout: @convention(block) (JSValue, Double) -> String? = { [weak self] function, msecs in
 
             let arguments = Array(JSContext.currentArguments()[2...])
-            print("### arguments=\(arguments)")
 
             // Timeout id
             self?.timeoutIdCounter += 1
