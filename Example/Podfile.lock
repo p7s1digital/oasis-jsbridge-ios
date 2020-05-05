@@ -1,17 +1,17 @@
 PODS:
-  - OasisJSBridge (0.3.5)
-  - OHHTTPStubs/Core (8.0.0)
-  - OHHTTPStubs/Default (8.0.0):
+  - OasisJSBridge (0.3.6)
+  - OHHTTPStubs/Core (9.0.0)
+  - OHHTTPStubs/Default (9.0.0):
     - OHHTTPStubs/Core
     - OHHTTPStubs/JSON
     - OHHTTPStubs/NSURLSession
     - OHHTTPStubs/OHPathHelpers
-  - OHHTTPStubs/JSON (8.0.0):
+  - OHHTTPStubs/JSON (9.0.0):
     - OHHTTPStubs/Core
-  - OHHTTPStubs/NSURLSession (8.0.0):
+  - OHHTTPStubs/NSURLSession (9.0.0):
     - OHHTTPStubs/Core
-  - OHHTTPStubs/OHPathHelpers (8.0.0)
-  - OHHTTPStubs/Swift (8.0.0):
+  - OHHTTPStubs/OHPathHelpers (9.0.0)
+  - OHHTTPStubs/Swift (9.0.0):
     - OHHTTPStubs/Default
 
 DEPENDENCIES:
@@ -27,9 +27,9 @@ EXTERNAL SOURCES:
     :path: "../"
 
 SPEC CHECKSUMS:
-  OasisJSBridge: 4072923cbbefdb20fd27632fd0072ee47c7dd2bd
-  OHHTTPStubs: 9cbce6364bec557cc3439aa6bb7514670d780881
+  OasisJSBridge: 5f1c95069f8ae0602c60dccd11cc3faade88cd61
+  OHHTTPStubs: cb29d2a9d09a828ecb93349a2b0c64f99e0db89f
 
 PODFILE CHECKSUM: f135e1301cb3257f53e305c05f78549b56904aa6
 
-COCOAPODS: 1.8.4
+COCOAPODS: 1.9.1

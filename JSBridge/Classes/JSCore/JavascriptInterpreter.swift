@@ -436,15 +436,15 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         let userDefaultsPrefix = "jsBridge"
 
         let setItem: @convention(block) (String, String) -> Void = { key, value in
-            UserDefaults.standard.set(value, forKey: "\(userDefaultsPrefix)key")
+            UserDefaults.standard.set(value, forKey: "\(userDefaultsPrefix)\(key)")
         }
         jsContext.setObject(setItem, forKeyedSubscript: "jsBridgeLocalStorageSetItem" as NSString)
         let getItem: @convention(block) (String) -> String? = { key in
-            return UserDefaults.standard.value(forKey: "\(userDefaultsPrefix)key") as? String
+            return UserDefaults.standard.value(forKey: "\(userDefaultsPrefix)\(key)") as? String
         }
         jsContext.setObject(getItem, forKeyedSubscript: "jsBridgeLocalStorageGetItem" as NSString)
         let removeItem: @convention(block) (String, String) -> Void = { key, value in
-            UserDefaults.standard.set(value, forKey: "\(userDefaultsPrefix)key")
+            UserDefaults.standard.set(value, forKey: "\(userDefaultsPrefix)\(key)")
             UserDefaults.standard.synchronize()
         }
         jsContext.setObject(removeItem, forKeyedSubscript: "jsBridgeLocalStorageRemoveItem" as NSString)

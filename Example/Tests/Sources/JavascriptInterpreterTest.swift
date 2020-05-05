@@ -86,7 +86,7 @@ class JavascriptInterpreterTest: XCTestCase {
     }
 
     override class func tearDown() {
-        OHHTTPStubs.removeAllStubs()
+        HTTPStubs.removeAllStubs()
         super.tearDown()
     }
 
@@ -597,6 +597,7 @@ class JavascriptInterpreterTest: XCTestCase {
         js.evaluateString(js: """
             localStorage.removeItem("test")
             localStorage.setItem("test", { id: 123 })
+            localStorage.setItem("test2", { id: 456 })
             let test = localStorage.getItem("test")
             test["id"]
         """) { value, error in
@@ -681,7 +682,7 @@ class JavascriptInterpreterTest: XCTestCase {
     // MARK: Private methods
 
     private func stubJsonRequest(url: String, responseText: String) {
-        OHHTTPStubs.stubRequests(
+        HTTPStubs.stubRequests(
             passingTest: { (request) -> Bool in
                 guard let host = request.url?.host, let path = request.url?.path else {
                     return false
@@ -693,10 +694,10 @@ class JavascriptInterpreterTest: XCTestCase {
 
                 return true
             },
-            withStubResponse: { [weak self] (_) -> OHHTTPStubsResponse in
+            withStubResponse: { [weak self] (_) -> HTTPStubsResponse in
                 let response = responseText
                 self?.stubbedRequests.append((url: url, response: response))
-                return OHHTTPStubsResponse(data: response.data(using: String.Encoding.utf8)!,
+                return HTTPStubsResponse(data: response.data(using: String.Encoding.utf8)!,
                                            statusCode: 200,
                                            headers: ["content-type": "application/json"])
             }
