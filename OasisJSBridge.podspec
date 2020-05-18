@@ -1,13 +1,13 @@
 
 Pod::Spec.new do |s|
   s.name             = 'OasisJSBridge'
-  s.version          = '0.3.7'
+  s.version          = '0.3.8'
   s.summary          = 'JavaScript bridge for iOS using JavascriptCore.'
   s.description      = "JSBridge, javascript bridge for iOS using JavascriptCore."
   s.homepage         = 'https://gitlab.p7s1.io/oasis-player/native-jsbridge-ios'
   s.license          = { :type => 'Apache License', :file => 'LICENSE' }
   s.author           = { 'cmps' => 'cmps@prosiebensat1digital.de' }
-  s.source           = { :git => 'git@gitlab.p7s1.io:oasis-player/native-jsbridge-ios.git', :tag => s.version.to_s }
+  s.source           = { :git => 'https://github.com/p7s1digital/oasis-jsbridge-ios.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '9.0'
   s.tvos.deployment_target = '9.0'
