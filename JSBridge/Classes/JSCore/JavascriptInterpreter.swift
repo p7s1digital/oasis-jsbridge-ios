@@ -437,17 +437,21 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
         let setItem: @convention(block) (String, String) -> Void = { key, value in
             UserDefaults.standard.set(value, forKey: "\(userDefaultsPrefix)\(key)")
+            UserDefaults.standard.synchronize()
         }
         jsContext.setObject(setItem, forKeyedSubscript: "jsBridgeLocalStorageSetItem" as NSString)
+
         let getItem: @convention(block) (String) -> String? = { key in
             return UserDefaults.standard.value(forKey: "\(userDefaultsPrefix)\(key)") as? String
         }
         jsContext.setObject(getItem, forKeyedSubscript: "jsBridgeLocalStorageGetItem" as NSString)
-        let removeItem: @convention(block) (String, String) -> Void = { key, value in
-            UserDefaults.standard.set(value, forKey: "\(userDefaultsPrefix)\(key)")
+
+        let removeItem: @convention(block) (String) -> Void = { key in
+            UserDefaults.standard.removeObject(forKey: "\(userDefaultsPrefix)\(key)")
             UserDefaults.standard.synchronize()
         }
         jsContext.setObject(removeItem, forKeyedSubscript: "jsBridgeLocalStorageRemoveItem" as NSString)
+
         let clear: @convention(block) () -> Void = {
             let keys = UserDefaults.standard.dictionaryRepresentation().keys.filter { $0.hasPrefix(userDefaultsPrefix) }
             for key in keys {
