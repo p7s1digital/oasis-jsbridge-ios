@@ -28,10 +28,29 @@ extension JSValue {
         return jsonString
     }
 
+    @available(*, deprecated, message: "Renamed to jsbridge_toNSDictionary")
     public func convertToDict() -> NSDictionary? {
+        return jsbridge_toNSDictionary()
+    }
+
+    public func jsbridge_toNSDictionary() -> NSDictionary? {
         do {
             guard let data = self.jsbridge_json().data(using: .utf8),
                 let json = try JSONSerialization.jsonObject(with: data) as? NSDictionary else {
+                    return nil
+            }
+            return json
+        } catch {
+            let error = JSBridgeError(type: .jsonDeserializationFailed,
+                                        message: "Error: JSON deserialization failed, \(error.localizedDescription)")
+            Logger.error(error.message)
+            return nil
+        }
+    }
+    public func jsbridge_toDictionary() -> [String: Any]? {
+        do {
+            guard let data = self.jsbridge_json().data(using: .utf8),
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                     return nil
             }
             return json
