@@ -112,7 +112,7 @@ static NSPointerArray *_instances = nil;
     NSURL *url = _url;
 
     // handle invalid URLs (often no scheme or invalid characters like curly brackets
-    // can cause NSURL object not be created in open:
+    // can cause NSURL object not be created in open:)
     if (url == nil) {
         [self.onerror callWithArguments:@[]];
         return;
