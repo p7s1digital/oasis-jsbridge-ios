@@ -22,7 +22,7 @@ static NSPointerArray *_instances = nil;
 
 @implementation XMLHttpRequest {
     NSString *_httpMethod;
-    NSURL *_url;
+    NSString *_url;
     bool _async;
     bool _isAborted;
     NSMutableDictionary *_requestHeaders;
@@ -103,17 +103,18 @@ static NSPointerArray *_instances = nil;
 - (void)open:(NSString *)httpMethod :(NSString *)url :(bool)async {
     // TODO should throw an error if called with wrong arguments
     _httpMethod = httpMethod;
-    _url = [NSURL URLWithString:url];
+    _url = url;
     _async = async;
     self.readyState = @(XMLHttpRequestOPENED);
 }
 
 - (void)send:(id)data {
-    NSURL *url = _url;
+    NSURL *url = [NSURL URLWithString:_url];
 
     // handle invalid URLs (often no scheme or invalid characters like curly brackets
     // can cause NSURL object not be created in open:)
     if (url == nil) {
+        [self log:[NSString stringWithFormat:@"invalid request url: %@", _url]];
         [self.onerror callWithArguments:@[]];
         return;
     }
@@ -155,6 +156,7 @@ static NSPointerArray *_instances = nil;
     }
 
     if (error != nil) {
+        [self log:[NSString stringWithFormat:@"request failed: %@ error: %@", _url, error]];
         [self.onerror callWithArguments:@[]];
         return;
     }
@@ -172,13 +174,7 @@ static NSPointerArray *_instances = nil;
     [onreadystatechange callWithArguments:@[]];
     [onload callWithArguments:@[]];
 
-    if (loggingHandler) {
-        NSString *message = [NSString stringWithFormat:@"[JSBridge] request: %@ response: %ld %@",
-                             _url,
-                             (long)httpResponse.statusCode,
-                             responseText];
-        loggingHandler(message);
-    }
+    [self log:[NSString stringWithFormat:@"request: %@ response: %ld %@", _url, (long)httpResponse.statusCode, responseText]];
 
     // Make sure that the XMLHttpRequest instance can be deallocated by nulling the JSValue instances
     // (which retain the JSContext)
@@ -187,6 +183,12 @@ static NSPointerArray *_instances = nil;
     // call onCompleteHandler, required to support Promise on older JSCore versions
     if (onCompleteHandler) onCompleteHandler();
 
+}
+
+- (void)log:(NSString*)message {
+    if (loggingHandler) {
+        loggingHandler([NSString stringWithFormat:@"[JSBridge] %@", message]);
+    }
 }
 
 - (void)abort {
