@@ -402,6 +402,38 @@ class JavascriptInterpreterTest: XCTestCase {
 
     }
 
+    func testXMLHTTPRequest_invalidURL() {
+        // GIVEN
+        let url = "https://test.url/api/request?code=${CODE}" // curly brackets are not allowed in URLs
+
+        let subject = createJavascriptInterpreter()
+
+        // WHEN
+        let js = """
+            var xhr = new XMLHttpRequest();
+            xhr.responseType = "json";
+            xhr.onload = function() {
+                native.sendEvent("onload", xhr.response);
+            }
+            xhr.onerror = function() {
+                native.sendEvent("onerror", xhr.response);
+            }
+            xhr.open("GET", "\(url)");
+            xhr.send();
+        """
+        subject.evaluateString(js: js, cb: nil)
+
+        let expectation = self.expectation(description: "js")
+        native.resetAndSetExpectation(expectation)
+
+        self.waitForExpectations(timeout: 10)
+
+        // THEN
+        XCTAssertEqual(native.receivedEvents.count, 1)
+        let event = native.receivedEvents[0]
+        XCTAssertEqual(event.name, "onerror")
+    }
+
     func testXMLHTTPRequest_abort() {
         // GIVEN
         let url = "https://test.url/api/request"

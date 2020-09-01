@@ -22,7 +22,7 @@ static NSPointerArray *_instances = nil;
 
 @implementation XMLHttpRequest {
     NSString *_httpMethod;
-    NSURL *_url;
+    NSString *_url;
     bool _async;
     bool _isAborted;
     NSMutableDictionary *_requestHeaders;
@@ -43,6 +43,7 @@ static NSPointerArray *_instances = nil;
 @synthesize statusText;
 @synthesize withCredentials;
 @synthesize onCompleteHandler;
+@synthesize loggingHandler;
 
 + (void)globalInit {
     [XMLHttpRequest globalInitWithURLSession:[NSURLSession sharedSession] jsQueue:dispatch_get_main_queue()];
@@ -102,13 +103,21 @@ static NSPointerArray *_instances = nil;
 - (void)open:(NSString *)httpMethod :(NSString *)url :(bool)async {
     // TODO should throw an error if called with wrong arguments
     _httpMethod = httpMethod;
-    _url = [NSURL URLWithString:url];
+    _url = url;
     _async = async;
     self.readyState = @(XMLHttpRequestOPENED);
 }
 
 - (void)send:(id)data {
-    NSURL *url = _url;
+    NSURL *url = [NSURL URLWithString:_url];
+
+    // handle invalid URLs (often no scheme or invalid characters like curly brackets
+    // can cause NSURL object not be created in open:)
+    if (url == nil) {
+        [self log:[NSString stringWithFormat:@"invalid request url: %@", _url]];
+        [self.onerror callWithArguments:@[]];
+        return;
+    }
 
     self.readyState = @(XMLHttpRequestLOADING);
     [self.onreadystatechange callWithArguments:@[]];
@@ -122,55 +131,64 @@ static NSPointerArray *_instances = nil;
     }
     [request setHTTPMethod:_httpMethod];
 
-    NSLog(@"Sending XHR request for URL: %@ \n%@", url, [request allHTTPHeaderFields]);
-
     __block __weak XMLHttpRequest *weakSelf = self;
-
-    id completionHandler = ^(NSData *receivedData, NSURLResponse *response, NSError *error) {
+    id completionHandler = ^(NSData *data, NSURLResponse *response, NSError *error) {
         XMLHttpRequest *strongSelf = weakSelf;
         if (strongSelf == nil) {
             return;
         }
 
         dispatch_async(_jsQueue, ^{
-            if ([self.readyState isEqual: @(XMLHttpRequestUNSENT)]) {
-                [self.onabort callWithArguments:@[]];
-                return;
-            } else if (![self.readyState  isEqual: @(XMLHttpRequestLOADING)]) {
-                return;
-            }
-
-            NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *) response;
-            strongSelf.readyState = @(XMLHttpRequestDONE);
-            strongSelf.status = @(httpResponse.statusCode);
-            strongSelf.statusText = [NSString stringWithFormat:@"%lid", (long)httpResponse.statusCode];
-            strongSelf.responseText = [[NSString alloc] initWithData:receivedData
-                                                        encoding:NSUTF8StringEncoding];
-
-            [strongSelf setAllResponseHeaders:[httpResponse allHeaderFields]];
-
-            strongSelf.response = [self getResponseWithResponseType:strongSelf.responseType responseText:strongSelf.responseText];
-
-            [strongSelf.onreadystatechange callWithArguments:@[]];
-            [strongSelf.onload callWithArguments:@[]];
-
-            void (^loggingHandler)(NSString*) = strongSelf.loggingHandler;
-            if (loggingHandler != nil) {
-                NSString *message = [NSString stringWithFormat:@"[JSBridge] request: %@ response: %ld %@", url, (long)httpResponse.statusCode, strongSelf.responseText];
-                loggingHandler(message);
-            }
-
-            // Make sure that the XMLHttpRequest instance can be deallocated by nulling the JSValue instances
-            // (which retain the JSContext)
-            [self clearJSValues];
-
-            // call onCompleteHandler, required to support Promise on older JSCore versions
-            if (strongSelf.onCompleteHandler) strongSelf.onCompleteHandler();
+            [strongSelf handleResponse:response data:data error:error];
         });
     };
-    NSURLSessionDataTask *task = [_urlSession dataTaskWithRequest:request
-                                                completionHandler:completionHandler];
+
+    NSURLSessionDataTask *task = [_urlSession dataTaskWithRequest:request completionHandler:completionHandler];
     [task resume];
+}
+
+- (void)handleResponse:(NSURLResponse*)receivedResponse data:(NSData*)data error:(NSError*)error {
+    if ([self.readyState isEqual:@(XMLHttpRequestUNSENT)]) {
+        [self.onabort callWithArguments:@[]];
+        return;
+    } else if (![self.readyState isEqual:@(XMLHttpRequestLOADING)]) {
+        return;
+    }
+
+    if (error != nil) {
+        [self log:[NSString stringWithFormat:@"request failed: %@ error: %@", _url, error]];
+        [self.onerror callWithArguments:@[]];
+        return;
+    }
+
+    NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse*)receivedResponse;
+    readyState = @(XMLHttpRequestDONE);
+    status = @(httpResponse.statusCode);
+    statusText = [NSString stringWithFormat:@"%lid", (long)httpResponse.statusCode];
+    responseText = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+
+    [self setAllResponseHeaders:httpResponse.allHeaderFields];
+
+    self.response = [self getResponseWithResponseType:responseType responseText:responseText];
+
+    [onreadystatechange callWithArguments:@[]];
+    [onload callWithArguments:@[]];
+
+    [self log:[NSString stringWithFormat:@"request: %@ response: %ld %@", _url, (long)httpResponse.statusCode, responseText]];
+
+    // Make sure that the XMLHttpRequest instance can be deallocated by nulling the JSValue instances
+    // (which retain the JSContext)
+    [self clearJSValues];
+
+    // call onCompleteHandler, required to support Promise on older JSCore versions
+    if (onCompleteHandler) onCompleteHandler();
+
+}
+
+- (void)log:(NSString*)message {
+    if (loggingHandler) {
+        loggingHandler([NSString stringWithFormat:@"[JSBridge] %@", message]);
+    }
 }
 
 - (void)abort {
