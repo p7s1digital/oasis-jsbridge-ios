@@ -115,13 +115,13 @@ static NSPointerArray *_instances = nil;
     // can cause NSURL object not be created in open:)
     if (url == nil) {
         [self log:[NSString stringWithFormat:@"invalid request url: %@", _url]];
-        [self.onerror callWithArguments:@[]];
+        [self call:onerror withArguments:@[]];
         return;
     }
 
     self.readyState = @(XMLHttpRequestLOADING);
-    [self.onreadystatechange callWithArguments:@[]];
-    
+    [self call:onreadystatechange withArguments:@[]];
+
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
     for (NSString *name in _requestHeaders) {
         [request setValue:_requestHeaders[name] forHTTPHeaderField:name];
@@ -149,7 +149,7 @@ static NSPointerArray *_instances = nil;
 
 - (void)handleResponse:(NSURLResponse*)receivedResponse data:(NSData*)data error:(NSError*)error {
     if ([self.readyState isEqual:@(XMLHttpRequestUNSENT)]) {
-        [self.onabort callWithArguments:@[]];
+        [self call:onabort withArguments:@[]];
         return;
     } else if (![self.readyState isEqual:@(XMLHttpRequestLOADING)]) {
         return;
@@ -157,7 +157,7 @@ static NSPointerArray *_instances = nil;
 
     if (error != nil) {
         [self log:[NSString stringWithFormat:@"request failed: %@ error: %@", _url, error]];
-        [self.onerror callWithArguments:@[]];
+        [self call:onerror withArguments:@[]];
         return;
     }
 
@@ -171,8 +171,8 @@ static NSPointerArray *_instances = nil;
 
     self.response = [self getResponseWithResponseType:responseType responseText:responseText];
 
-    [onreadystatechange callWithArguments:@[]];
-    [onload callWithArguments:@[]];
+    [self call:onreadystatechange withArguments:@[]];
+    [self call:onload withArguments:@[]];
 
     [self log:[NSString stringWithFormat:@"request: %@ response: %ld %@", _url, (long)httpResponse.statusCode, responseText]];
 
@@ -183,6 +183,15 @@ static NSPointerArray *_instances = nil;
     // call onCompleteHandler, required to support Promise on older JSCore versions
     if (onCompleteHandler) onCompleteHandler();
 
+}
+
+- (void)call:(JSValue*)value withArguments:(NSArray*)arguments {
+    if (value == nil ||
+        value.isNull ||
+        value.isUndefined) {
+        return;
+    }
+    [value callWithArguments:arguments];
 }
 
 - (void)log:(NSString*)message {
@@ -229,7 +238,7 @@ static NSPointerArray *_instances = nil;
     if ([contentType isEqualToString:@""]) {
         return responseText;
     }
-    
+
     if ([contentType isEqualToString:@"text"]) {
         return responseText;
     }
