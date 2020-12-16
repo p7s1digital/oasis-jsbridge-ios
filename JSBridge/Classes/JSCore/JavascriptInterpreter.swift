@@ -176,7 +176,10 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         var result: JSValue!
         let semaphore = DispatchSemaphore(value: 0)
         runOnJSQueue { [weak self] in
-            guard let strongSelf = self else { return }
+            guard let strongSelf = self else {
+                semaphore.signal()
+                return
+            }
             let (object, function) = strongSelf.javascriptFunction(object: object, name: functionName)
             let convertedArguments = strongSelf.converted(arguments)
             result = object.invokeMethod(function, withArguments: convertedArguments)
