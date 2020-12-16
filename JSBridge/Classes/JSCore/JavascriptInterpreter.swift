@@ -121,8 +121,10 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             }
 
             // Making the call synchronous to make sure that the order is preserved
-            DispatchQueue.main.sync {
-                cb?()
+            if let cb = cb {
+                DispatchQueue.main.sync {
+                    cb()
+                }
             }
         }
     }
@@ -131,15 +133,16 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         runOnJSQueue { [weak self] in
             self?.lastException = nil
             let ret = self?.jsContext.evaluateScript(js)
-            let keepCallback = cb
 
             // Making the call synchronous to make sure that the order is preserved
-            DispatchQueue.main.sync {
-                if let lastException = self?.lastException {
-                    let error = JSBridgeError(type: .jsEvaluationFailed, message: lastException.toString())
-                    keepCallback?(nil, error)
-                } else {
-                    keepCallback?(ret, nil)
+            if let keepCallback = cb {
+                DispatchQueue.main.sync {
+                    if let lastException = self?.lastException {
+                        let error = JSBridgeError(type: .jsEvaluationFailed, message: lastException.toString())
+                        keepCallback(nil, error)
+                    } else {
+                        keepCallback(ret, nil)
+                    }
                 }
             }
         }
@@ -170,10 +173,16 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
               functionName: String,
               arguments: [Any]) -> JSValue {
 
-        assert(isRunningOnJSQueue())
-
-        let (object, function) = javascriptFunction(object: object, name: functionName)
-        return object.invokeMethod(function, withArguments: converted(arguments))
+        var result: JSValue!
+        let semaphore = DispatchSemaphore(value: 0)
+        runOnJSQueue {
+            let (object, function) = self.javascriptFunction(object: object, name: functionName)
+            let convertedArguments = self.converted(arguments)
+            result = object.invokeMethod(function, withArguments: convertedArguments)
+            semaphore.signal()
+        }
+        semaphore.wait()
+        return result
     }
 
     public func callWithCallback<T: Codable>(object: JSValue?,
