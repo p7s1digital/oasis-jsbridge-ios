@@ -131,13 +131,15 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     public func evaluateString(js: String, cb: ((_: JSValue?, _: JSBridgeError?) -> Void)?) {
         runOnJSQueue { [weak self] in
-            self?.lastException = nil
-            let ret = self?.jsContext.evaluateScript(js)
+            guard let self = self else { return }
+
+            self.lastException = nil
+            let ret = self.jsContext.evaluateScript(js)
 
             // Making the call synchronous to make sure that the order is preserved
             if let keepCallback = cb {
-                DispatchQueue.main.sync {
-                    if let lastException = self?.lastException {
+                self.runOnMainQueue {
+                    if let lastException = self.lastException {
                         let error = JSBridgeError(type: .jsEvaluationFailed, message: lastException.toString())
                         keepCallback(nil, error)
                     } else {
@@ -340,6 +342,16 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             jsQueue.async { [weak self] in
                 block()
                 self?.runPromiseQueue()
+            }
+        }
+    }
+    
+    private func runOnMainQueue(block: @escaping  () -> Void) {
+        if Thread.isMainThread {
+            block()
+        } else {
+            DispatchQueue.main.async {
+                block()
             }
         }
     }
