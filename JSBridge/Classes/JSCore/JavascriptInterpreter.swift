@@ -346,7 +346,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
     }
     
-    private func runOnMainQueue(block: @escaping  () -> Void) {
+    private func runOnMainQueue(block: @escaping () -> Void) {
         if Thread.isMainThread {
             block()
         } else {
