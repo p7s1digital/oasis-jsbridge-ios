@@ -120,12 +120,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
                 Logger.error("Error while processing script file: \(error)")
             }
 
-            // Making the call synchronous to make sure that the order is preserved
-            if let cb = cb {
-                DispatchQueue.main.sync {
-                    cb()
-                }
-            }
+            cb?()
         }
     }
 
@@ -208,7 +203,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
                                      arguments: [Any]) -> JavascriptPromise<T> {
 
         let promise = JavascriptPromise<T>()
-        runOnJSQueue { [weak self] in
+        runOnJSQueue(synchronous: true) { [weak self] in
 
             guard let strongSelf = self else { return }
 
@@ -228,7 +223,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
                               arguments: [Any]) -> JavascriptValuePromise {
 
         let promise = JavascriptValuePromise()
-        runOnJSQueue { [weak self] in
+        runOnJSQueue(synchronous: true) { [weak self] in
 
             guard let strongSelf = self else { return }
 
@@ -333,15 +328,22 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         return DispatchQueue.getSpecific(key: JavascriptInterpreter.jsQueueKey) == JavascriptInterpreter.JSQUEUE_LABEL
     }
 
-    func runOnJSQueue(_ block: @escaping () -> Void) {
+    func runOnJSQueue(synchronous: Bool = false, _ block: @escaping () -> Void) {
 
         if isRunningOnJSQueue() {
             block()
             runPromiseQueue()
         } else {
-            jsQueue.async { [weak self] in
-                block()
-                self?.runPromiseQueue()
+            if synchronous {
+                jsQueue.sync { [weak self] in
+                    block()
+                    self?.runPromiseQueue()
+                }
+            } else {
+                jsQueue.async { [weak self] in
+                    block()
+                    self?.runPromiseQueue()
+                }
             }
         }
     }

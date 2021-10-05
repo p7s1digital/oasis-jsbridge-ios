@@ -548,6 +548,32 @@ class JavascriptInterpreterTest: XCTestCase {
 
         self.waitForExpectations(timeout: 5)
     }
+    func testFastResolvePromise() {
+        let js = JavascriptInterpreter()
+        js.evaluateString(js: """
+
+            function getDelayedMessage() {
+                return new Promise(function(resolve, reject) {
+                    console.log("JS: MESSAGE RESOLVED");
+                    resolve({ firstname: "Tester", lastname: "Blester"});
+                });
+            }
+
+            """)
+
+        let callbackExpectation = self.expectation(description: "callback")
+
+        js.callWithPromise(object: nil, functionName: "getDelayedMessage", arguments: []).then { (value: Person) in
+            XCTAssertEqual(value.firstname, "Tester")
+            XCTAssertEqual(value.lastname, "Blester")
+            callbackExpectation.fulfill()
+        }.except { (_) in
+            XCTAssert(false)
+        }
+
+        self.waitForExpectations(timeout: 5)
+    }
+
     func testFailingPromise() {
         let js = JavascriptInterpreter()
         js.evaluateString(js: """
