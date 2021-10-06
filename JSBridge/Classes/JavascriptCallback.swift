@@ -17,7 +17,7 @@
 import Foundation
 import JavaScriptCore
 
-public protocol JavascriptCallbackProtocol: class {
+public protocol JavascriptCallbackProtocol: AnyObject {
     func onResult(value: JSValue?, error: JSValue?)
 }
 

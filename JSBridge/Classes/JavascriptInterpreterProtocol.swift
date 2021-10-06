@@ -17,7 +17,7 @@
 import Foundation
 import JavaScriptCore
 
-public protocol JavascriptInterpreterProtocol: class {
+public protocol JavascriptInterpreterProtocol: AnyObject {
 
     func evaluateLocalFile(bundle: Bundle, filename: String, cb: (() -> Void)?)
     func evaluateString(js: String, cb: ((_: JSValue?, _: JSBridgeError?) -> Void)?)
