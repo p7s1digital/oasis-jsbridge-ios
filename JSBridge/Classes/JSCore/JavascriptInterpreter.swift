@@ -517,9 +517,12 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     func setTimeoutHelper(setFunctionName: String, clearFunctionName: String, doRepeat: Bool) {
         // setTimeout(cb, msecs) -> String
-        let setTimeout: @convention(block) (JSValue, Double) -> String? = { [weak self] function, msecs in
+        let setTimeout: @convention(block) (JSValue, Double) -> String? = { [weak self] function, msecsInput in
 
-            let arguments = Array(JSContext.currentArguments()[2...])
+            let allArguments = JSContext.currentArguments() ?? []
+            let safeArguments = allArguments.count > 2 ? allArguments[2...] : []
+            let arguments = Array(safeArguments)
+            let msecs = msecsInput.isNaN ? 0 : Int(msecsInput)
 
             // Timeout id
             self?.timeoutIdCounter += 1
@@ -557,7 +560,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
             triggerFunc = { [weak self] in
                 // Delay
-                let delayTime = DispatchTime.now() + DispatchTimeInterval.milliseconds(Int(msecs))
+                let delayTime = DispatchTime.now() + DispatchTimeInterval.milliseconds(msecs)
                 self?.jsQueue.asyncAfter(deadline: delayTime, execute: triggerBlock)
             }
             triggerFunc!()

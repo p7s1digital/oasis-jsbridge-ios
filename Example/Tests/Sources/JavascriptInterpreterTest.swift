@@ -209,6 +209,25 @@ class JavascriptInterpreterTest: XCTestCase {
         }
     }
 
+    func testSetTimeoutNoMilisParameter() {
+        // GIVEN
+        let subject = createJavascriptInterpreter()
+
+        // WHEN
+        let js = "setTimeout(function() { native.sendEvent(\"timeout\", {done: true}); });"
+        subject.evaluateString(js: js, cb: nil)
+
+        let expectation = self.expectation(description: "js")
+        expectation.assertForOverFulfill = true
+        expectation.expectedFulfillmentCount = 1
+        native.resetAndSetExpectation(expectation)
+
+        self.waitForExpectations(timeout: 1)
+
+        // THEN
+        XCTAssertEqual(native.receivedEvents.count, 1)
+    }
+
     func testClearTimeout() {
         // GIVEN
         let subject = createJavascriptInterpreter()
