@@ -110,6 +110,12 @@ static NSPointerArray *_instances = nil;
 
 - (void)send:(id)data {
     NSURL *url = [NSURL URLWithString:_url];
+    
+    if (url == nil) {
+        NSString *unescaped = [_url stringByRemovingPercentEncoding];
+        NSString *escaped = [unescaped stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+        url = [NSURL URLWithString:escaped];
+    }
 
     // handle invalid URLs (often no scheme or invalid characters like curly brackets
     // can cause NSURL object not be created in open:)
