@@ -45,8 +45,6 @@ enum WebSocketState: Int {
     private var _readyState: WebSocketState = .connecting
     var readyState: Int { return _readyState.rawValue }
     
-    var loggingHandler: ((String) -> Void)?
-    
     private var urlSession: URLSession?
     private var socketTask: URLSessionWebSocketTask?
     
@@ -78,6 +76,12 @@ enum WebSocketState: Int {
         socketTask = task
         self.receive()
         task?.resume()
+    }
+    
+    private func onJSQueue(_ block: @escaping () -> Void) {
+        WebSocket.jsQueue.async {
+            block()
+        }
     }
     
     func clear() {
@@ -132,7 +136,9 @@ enum WebSocketState: Int {
     private func send(message: URLSessionWebSocketTask.Message) {
         socketTask?.send(message, completionHandler: { [weak self] error in
             guard let err = error else { return }
-            self?.onerror?.call(withArguments: [err])
+            self?.onJSQueue { [weak self] in
+                self?.onerror?.call(withArguments: [err])
+            }
         })
     }
     
@@ -143,15 +149,21 @@ enum WebSocketState: Int {
                 switch message {
                 case .data(let data):
                     if let decoded = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) {
-                        self?.onmessage?.call(withArguments: [WebSocketMessageEvent(decoded)])
+                        self?.onJSQueue { [weak self] in
+                            self?.onmessage?.call(withArguments: [WebSocketMessageEvent(decoded)])
+                        }
                     }
                 case .string(let string):
-                    self?.onmessage?.call(withArguments: [WebSocketMessageEvent(string)])
+                    self?.onJSQueue { [weak self] in
+                        self?.onmessage?.call(withArguments: [WebSocketMessageEvent(string)])
+                    }
                 @unknown default:
                     break
                 }
             case .failure(let error):
-                self?.onerror?.call(withArguments: [error])
+                self?.onJSQueue { [weak self] in
+                    self?.onerror?.call(withArguments: [error])
+                }
             }
             
             self?.receive()
@@ -163,7 +175,9 @@ extension WebSocket: URLSessionWebSocketDelegate {
     
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
         _readyState = .open
-        onopen?.call(withArguments: [])
+        onJSQueue { [weak self] in
+            self?.onopen?.call(withArguments: [])
+        }
     }
     
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
@@ -171,6 +185,8 @@ extension WebSocket: URLSessionWebSocketDelegate {
         let closeEvent = WebSocketCloseEvent(code: closeCode.rawValue, reason: reasonString)
         cleanSession()
         _readyState = .closed
-        onclose?.call(withArguments: [closeEvent])
+        onJSQueue { [weak self] in
+            self?.onclose?.call(withArguments: [closeEvent])
+        }
     }
 }

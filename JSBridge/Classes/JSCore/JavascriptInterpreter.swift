@@ -632,10 +632,6 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
                 return
             }
             
-            instance.loggingHandler = { (message) in
-                Logger.verbose(message)
-            }
-            
             let pointer = Unmanaged.passUnretained(instance).toOpaque()
             strongSelf.webSocketInstances.addPointer(pointer)
         }
