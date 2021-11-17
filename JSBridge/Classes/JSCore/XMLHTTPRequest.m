@@ -113,7 +113,7 @@ static NSPointerArray *_instances = nil;
     
     if (url == nil) {
         NSString *unescaped = [_url stringByRemovingPercentEncoding];
-        NSString *escaped = [unescaped stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+        NSString *escaped = [unescaped stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLHostAllowedCharacterSet]];
         url = [NSURL URLWithString:escaped];
     }
 
