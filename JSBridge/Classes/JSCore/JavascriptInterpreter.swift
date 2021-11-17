@@ -28,6 +28,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     private var timeoutIdCounter = 0
     private var pendingTimeouts: [Int: JSValue?] = [:]  // key: timeoutId
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
+    private var webSocketInstances = NSPointerArray.weakObjects()
     private let jsBridgeBundle: Bundle!
     private var lastException: JSValue?
     
@@ -54,6 +55,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         setupStringify()
         setupTimeoutAndInterval()
         setupXMLHttpRequest()
+        setupWebSocket()
         setupLoadURL()
         setupLocalStorage()
     }
@@ -65,6 +67,8 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
         urlSession.reset { }
         xmlHttpRequestInstances = NSPointerArray.weakObjects()
+        webSocketInstances.allObjects.forEach({ ($0 as? WebSocket)?.clear() })
+        webSocketInstances = NSPointerArray.weakObjects()
         pendingTimeouts.removeAll()
         jsContext = nil
     }
@@ -621,6 +625,19 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             let pointer = Unmanaged.passUnretained(instance).toOpaque()
             strongSelf.xmlHttpRequestInstances.addPointer(pointer)
         })
+    }
+    
+    private func setupWebSocket() {
+        WebSocket.globalInit(withJSQueue: jsQueue)
+        WebSocket.extend(jsContext) { [weak self] instance in
+            guard let strongSelf = self else {
+                instance.clear()
+                return
+            }
+            
+            let pointer = Unmanaged.passUnretained(instance).toOpaque()
+            strongSelf.webSocketInstances.addPointer(pointer)
+        }
     }
 
     private func setupLoadURL() {

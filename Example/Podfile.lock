@@ -1,5 +1,5 @@
 PODS:
-  - OasisJSBridge (0.3.15)
+  - OasisJSBridge (0.3.16)
   - OHHTTPStubs/Core (9.1.0)
   - OHHTTPStubs/Default (9.1.0):
     - OHHTTPStubs/Core
@@ -27,7 +27,7 @@ EXTERNAL SOURCES:
     :path: "../"
 
 SPEC CHECKSUMS:
-  OasisJSBridge: 5ae2188aeaab5c03234ca398e42bdbdbb9c2de7f
+  OasisJSBridge: a3b07a6454c44199123f95d723014e6488c2e612
   OHHTTPStubs: 90eac6d8f2c18317baeca36698523dc67c513831
 
 PODFILE CHECKSUM: f135e1301cb3257f53e305c05f78549b56904aa6
