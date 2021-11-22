@@ -112,9 +112,7 @@ static NSPointerArray *_instances = nil;
     NSURL *url = [NSURL URLWithString:_url];
     
     if (url == nil) {
-        NSString *unescaped = [_url stringByRemovingPercentEncoding];
-        NSString *escaped = [unescaped stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLHostAllowedCharacterSet]];
-        url = [NSURL URLWithString:escaped];
+        url = [self cleaningURLComponents:_url];
     }
 
     // handle invalid URLs (often no scheme or invalid characters like curly brackets
@@ -256,6 +254,27 @@ static NSPointerArray *_instances = nil;
 
     // TODO: support more response types like "arraybuffer", "document"
     return responseText;
+}
+
+- (NSURL *)cleaningURLComponents:(NSString * _Nonnull)inputUrlStr {
+    NSArray<NSString *> *querySplit = [inputUrlStr componentsSeparatedByString:@"?"];
+    if (querySplit.count == 2) {
+        NSURLComponents *components = [NSURLComponents componentsWithString:querySplit.firstObject];
+        if (components) {
+            NSMutableArray<NSURLQueryItem*> *queryItems = [NSMutableArray new];
+            
+            for (NSString *item in [querySplit.lastObject componentsSeparatedByString:@"&"]) {
+                NSArray<NSString*>* itemSplit = [item componentsSeparatedByString:@"="];
+                if (itemSplit.count == 2) {
+                    NSURLQueryItem *newItem = [NSURLQueryItem queryItemWithName:itemSplit.firstObject value:itemSplit.lastObject];
+                    [queryItems addObject:newItem];
+                }
+            }
+            components.queryItems = queryItems;
+            return [components URL];
+        }
+    }
+    return [NSURL URLWithString:inputUrlStr];
 }
 
 @end
