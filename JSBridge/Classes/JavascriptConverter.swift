@@ -41,9 +41,6 @@ extension JSValue {
             }
             return json
         } catch {
-            let error = JSBridgeError(type: .jsonDeserializationFailed,
-                                        message: "Error: JSON deserialization failed, \(error.localizedDescription)")
-            Logger.error(error.message)
             return nil
         }
     }
@@ -55,9 +52,6 @@ extension JSValue {
             }
             return json
         } catch {
-            let error = JSBridgeError(type: .jsonDeserializationFailed,
-                                        message: "Error: JSON deserialization failed, \(error.localizedDescription)")
-            Logger.error(error.message)
             return nil
         }
     }
