@@ -136,10 +136,18 @@ enum WebSocketState: Int {
     private func send(message: URLSessionWebSocketTask.Message) {
         socketTask?.send(message, completionHandler: { [weak self] error in
             guard let err = error else { return }
-            self?.onJSQueue { [weak self] in
-                self?.onerror?.call(withArguments: [err])
-            }
+            self?.closeWithError(err)
         })
+    }
+    
+    private func closeWithError(_ error: Error) {
+        cleanSession()
+        _readyState = .closed
+        onJSQueue { [weak self] in
+            let closeEvent = WebSocketCloseEvent(code: URLSessionWebSocketTask.CloseCode.abnormalClosure.rawValue, reason: nil)
+            self?.onclose?.call(withArguments: [closeEvent])
+            self?.onerror?.call(withArguments: [error])
+        }
     }
     
     private func receive() {
@@ -160,13 +168,10 @@ enum WebSocketState: Int {
                 @unknown default:
                     break
                 }
+                self?.receive()
             case .failure(let error):
-                self?.onJSQueue { [weak self] in
-                    self?.onerror?.call(withArguments: [error])
-                }
+                self?.closeWithError(error)
             }
-            
-            self?.receive()
         })
     }
 }
