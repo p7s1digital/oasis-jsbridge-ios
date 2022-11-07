@@ -520,6 +520,11 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
 
     func setTimeoutHelper(setFunctionName: String, clearFunctionName: String, doRepeat: Bool) {
+        
+        class TriggerFunc {
+            var block: (() -> ())?
+        }
+        
         // setTimeout(cb, msecs) -> String
         let setTimeout: @convention(block) (JSValue, Double) -> String? = { [weak self] function, msecsInput in
 
@@ -537,9 +542,9 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
             Logger.verbose("Timeout \(timeoutId) started, msecs = \(msecs)")
 
-            var triggerFunc: (() -> Void)?  // defined below
+            let trigger = TriggerFunc()
 
-            let triggerBlock = { [weak self, weak function] in
+            let triggerBlock = { [weak self, weak function, weak trigger] in
                 guard let strongSelf = self else {
                     return
                 }
@@ -554,7 +559,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
                 if doRepeat {
                     Logger.verbose("Repeating timeout \(timeoutId)...")
-                    triggerFunc?()
+                    trigger?.block?()
                 } else {
                     strongSelf.pendingTimeouts.removeValue(forKey: timeoutId)
                 }
@@ -562,12 +567,12 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
                 strongSelf.runPromiseQueue()
             }
 
-            triggerFunc = { [weak self] in
+            trigger.block = { [weak self] in
                 // Delay
                 let delayTime = DispatchTime.now() + DispatchTimeInterval.milliseconds(msecs)
                 self?.jsQueue.asyncAfter(deadline: delayTime, execute: triggerBlock)
             }
-            triggerFunc!()
+            trigger.block?()
             return "\(timeoutId)"
         }
 
