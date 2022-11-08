@@ -25,8 +25,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     public var jsContext: JSContext!
     private let jsQueue: DispatchQueue
     private var urlSession = JavascriptInterpreter.createURLSession()
-    private var timeoutIdCounter = 0
-    private var pendingTimeouts: [Int: JSValue?] = [:]  // key: timeoutId
+    private var pendingTimeouts = [Timeout]()
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
     private var webSocketInstances = NSPointerArray.weakObjects()
     private let jsBridgeBundle: Bundle!
@@ -34,6 +33,20 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     
     enum JSError: Error {
         case runtimeError(String)
+    }
+    
+    private class Timeout {
+        private static var timeoutIdCounter: Int = 0
+        
+        var block: (() -> ())?
+        let callback: JSValue?
+        let id: Int
+        
+        init(callback: JSValue?) {
+            self.id = Timeout.timeoutIdCounter
+            Timeout.timeoutIdCounter = Timeout.timeoutIdCounter + 1
+            self.callback = callback
+        }
     }
 
     // MARK: - Initializer
@@ -520,11 +533,6 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
 
     func setTimeoutHelper(setFunctionName: String, clearFunctionName: String, doRepeat: Bool) {
-        
-        class TriggerFunc {
-            var block: (() -> ())?
-        }
-        
         // setTimeout(cb, msecs) -> String
         let setTimeout: @convention(block) (JSValue, Double) -> String? = { [weak self] function, msecsInput in
 
@@ -533,47 +541,41 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             let arguments = Array(safeArguments)
             let msecs = msecsInput.isNaN ? 0 : Int(msecsInput)
 
-            // Timeout id
-            self?.timeoutIdCounter += 1
-            guard let timeoutId = self?.timeoutIdCounter else {
-                return nil
-            }
-            self?.pendingTimeouts[timeoutId] = function
+            let timeout = Timeout(callback: function)
+            self?.pendingTimeouts.append(timeout)
 
-            Logger.verbose("Timeout \(timeoutId) started, msecs = \(msecs)")
+            Logger.verbose("Timeout \(timeout.id) started, msecs = \(msecs)")
 
-            let trigger = TriggerFunc()
-
-            let triggerBlock = { [weak self, weak function, weak trigger] in
+            let triggerBlock = { [weak self, weak function, weak timeout] in
                 guard let strongSelf = self else {
                     return
                 }
-
-                if strongSelf.pendingTimeouts[timeoutId] == nil {
-                    Logger.warning("setTimeout callback with timeoutId = \(timeoutId) not called because it was aborted!")
+                
+                guard let timeout = timeout, strongSelf.pendingTimeouts.contains(where: { $0.id == timeout.id }) else {
+                    Logger.warning("setTimeout callback with timeoutId = \(String(describing: timeout?.id)) not called because it was aborted!")
                     return
                 }
 
-                Logger.verbose("Timeout \(timeoutId) triggered")
+                Logger.verbose("Timeout \(timeout.id) triggered")
                 function?.call(withArguments: arguments)
 
                 if doRepeat {
-                    Logger.verbose("Repeating timeout \(timeoutId)...")
-                    trigger?.block?()
+                    Logger.verbose("Repeating timeout \(timeout.id)...")
+                    timeout.block?()
                 } else {
-                    strongSelf.pendingTimeouts.removeValue(forKey: timeoutId)
+                    strongSelf.pendingTimeouts.removeAll(where: { $0.id == timeout.id })
                 }
 
                 strongSelf.runPromiseQueue()
             }
 
-            trigger.block = { [weak self] in
+            timeout.block = { [weak self] in
                 // Delay
                 let delayTime = DispatchTime.now() + DispatchTimeInterval.milliseconds(msecs)
                 self?.jsQueue.asyncAfter(deadline: delayTime, execute: triggerBlock)
             }
-            trigger.block?()
-            return "\(timeoutId)"
+            timeout.block?()
+            return "\(timeout.id)"
         }
 
         jsContext.setObject(setTimeout, forKeyedSubscript: setFunctionName as NSString)
@@ -590,10 +592,12 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             }
 
             // remove value for timeoutId and check the result or removing
-            if strongSelf.pendingTimeouts.removeValue(forKey: timeoutId) == nil {
+            guard let foundTimeoutIndex = strongSelf.pendingTimeouts.firstIndex(where: { $0.id == timeoutId }) else {
                 Logger.warning("Cannot abort timeout with id \(strTimeoutId) because there is no pending timeout with this id")
                 return
             }
+            
+            strongSelf.pendingTimeouts.remove(at: foundTimeoutIndex)
 
             Logger.debug("Aborted timeout with id \(strTimeoutId)")
         }
