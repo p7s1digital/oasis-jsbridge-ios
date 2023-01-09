@@ -15,6 +15,7 @@
  */
 
 import UIKit
+import JavaScriptCore
 import OasisJSBridge
 
 class TestLogger: JSBridgeLoggingProtocol {

@@ -55,7 +55,11 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
         jsContext = JSContext()!
 
+        #if SWIFT_PACKAGE
+        jsBridgeBundle = Bundle.module
+        #else
         jsBridgeBundle = Bundle(for: JavascriptInterpreter.self)
+        #endif
 
         jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
         jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
@@ -615,25 +619,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
 
     private func setupXMLHttpRequest() {
-        XMLHttpRequest.globalInit(with: urlSession, jsQueue: jsQueue)
-        XMLHttpRequest.extend(jsContext, onNewInstance: { [weak self] instance in
-            guard let strongSelf = self else {
-                instance.clearJSValues()
-                return
-            }
-
-            instance.onCompleteHandler = {
-                self?.runOnJSQueue {
-                    self?.runPromiseQueue()
-                }
-            }
-            instance.loggingHandler = { (message) in
-                Logger.verbose(message)
-            }
-
-            let pointer = Unmanaged.passUnretained(instance).toOpaque()
-            strongSelf.xmlHttpRequestInstances.addPointer(pointer)
-        })
+        XMLHttpRequest.configure(jsQueue: jsQueue, context: jsContext)
     }
     
     private func setupWebSocket() {
