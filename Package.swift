@@ -5,7 +5,7 @@ let package = Package(
     name: "OasisJSBridge",
     platforms: [.iOS(.v13), .tvOS(.v13)],
     products: [
-        .library(name: "OasisJSBridge", type: .dynamic, targets: ["OasisJSBridge"])
+        .library(name: "OasisJSBridge", targets: ["OasisJSBridge"])
     ],
     targets: [
         .target(name: "OasisJSBridge", path: "JSBridge",
