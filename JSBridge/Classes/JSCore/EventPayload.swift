@@ -1,7 +1,7 @@
 import Foundation
 import JavaScriptCore
 
-enum EventHandlerEventType: String {
+enum EventHandlerEventType: String, CaseIterable {
     case loadStart = "loadstart"
     case progress
     case abort
@@ -12,7 +12,7 @@ enum EventHandlerEventType: String {
     case readyStateChange = "readystatechange"
 }
 
-@objc protocol EventPayloadProtocol {
+@objc protocol EventPayloadProtocol: JSExport {
     var type: String { get }
     var target: JSValue? { get }
     var srcElement: JSValue? { get }
@@ -37,25 +37,17 @@ enum EventHandlerEventType: String {
     var timeStamp: Int { get }
 }
 
-// MARK: - Object for the event, emitted by the XMLHTTPRequest
-
+/// Object for the event, emitted by the XMLHTTPRequest
 class EventPayload: NSObject {
     var type: String
     var currentTarget: JSValue?
     var target: JSValue?
     var srcElement: JSValue?
 
-    init(type: String, target: JSValue?) {
-        self.type = type
-        self.target = target
-        currentTarget = target
-        srcElement = target
-    }
-
     init(type: EventHandlerEventType, value: XMLHttpRequestJSExport) {
-        self.type = type.rawValue
+        let target = JSContext.current().flatMap { JSValue(object: value, in: $0) }
 
-        let target = EventPayload.createTarget(from: value)
+        self.type = type.rawValue
         self.target = target
         currentTarget = target
         srcElement = target
@@ -79,13 +71,4 @@ extension EventPayload: EventPayloadProtocol {
     var lengthComputable: Bool { false }
     var returnValue: Bool { true }
     var timeStamp: Int { 0 }
-}
-
-extension EventPayload {
-    static func createTarget(from value: XMLHttpRequestJSExport) -> JSValue? {
-        guard let context = JSContext.current() else { return nil }
-
-        let xhr = context.objectForKeyedSubscript("XMLHttpRequest")
-        return xhr ?? JSValue(object: value, in: context)
-    }
 }
