@@ -47,8 +47,9 @@ import JavaScriptCore
 
     private let jsQueue: DispatchQueue
     private weak var context: JSContext?
-
+    private let urlSession: URLSession
     private var eventListeners = [XMLHttpRequestEvent.EventType: JSValue]()
+
     private var request: URLRequest?
     private var dataTask: URLSessionDataTask?
     private var responseHeaders = [String: String]()
@@ -56,7 +57,8 @@ import JavaScriptCore
 
     // MARK: Init
 
-    init(jsQueue: DispatchQueue, context: JSContext) {
+    init(urlSession: URLSession, jsQueue: DispatchQueue, context: JSContext) {
+        self.urlSession = urlSession
         self.jsQueue = jsQueue
         self.context = context
 
@@ -65,10 +67,10 @@ import JavaScriptCore
 
     // MARK: Internal static methods
 
-    static func configure(jsQueue: DispatchQueue, context: JSContext) {
+    static func configure(urlSession: URLSession, jsQueue: DispatchQueue, context: JSContext, onCreate: ((XMLHttpRequest) -> Void)? = nil) {
         jsQueue.async {
             let constructor: @convention(block) () -> XMLHttpRequest = {
-                XMLHttpRequest(jsQueue: jsQueue, context: context)
+                XMLHttpRequest(urlSession: urlSession, jsQueue: jsQueue, context: context)
             }
             context.setObject(constructor, forKeyedSubscript: NSString(string: "XMLHttpRequest"))
 
@@ -109,11 +111,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
             request.httpBody = payload.data(using: .utf8)
         }
 
-        let config = URLSessionConfiguration.default
-        config.requestCachePolicy = .reloadIgnoringLocalCacheData
-        let session = URLSession(configuration: config)
-
-        let dataTask = session.dataTask(with: request) { [weak self] data, response, error in
+        let dataTask = urlSession.dataTask(with: request) { [weak self] data, response, error in
             self?.jsQueue.async {
                 self?.processResponse(data, response, error)
             }

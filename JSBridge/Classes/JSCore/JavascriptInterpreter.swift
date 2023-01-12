@@ -619,7 +619,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
 
     private func setupXMLHttpRequest() {
-        XMLHttpRequest.configure(jsQueue: jsQueue, context: jsContext)
+        XMLHttpRequest.configure(urlSession: urlSession, jsQueue: jsQueue, context: jsContext)
     }
     
     private func setupWebSocket() {
