@@ -91,7 +91,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
 //        guard let encodedString = urlString.addingPercentEncoding(withAllowedCharacters: urlCharacterSet),
           guard let url = URL(string: urlString) else {
 //            jTrace("Cannot create URL from \(urlString)", type: .error, category: .playerKit)
-            onerror?.call(withArguments: [])
+            emitEvent(type: .error)
             return
         }
 
@@ -100,15 +100,13 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
         self.request = request
 
         readyState = XMLHttpRequestStatus.opened.rawValue
-        onreadystatechange?.call(withArguments: [])
+        emitEvent(type: .readyStateChange)
     }
 
     func send(_ data: Any?) {
         guard var request else { return }
 
-        onsend?.call(withArguments: [])
-        let eventPayload = XMLHttpRequestEvent(type: .loadStart, value: self, context: context)
-        emitEvent(type: .loadStart, payload: eventPayload)
+        emitEvent(type: .loadStart)
 
         if let payload = data as? String {
             request.httpBody = payload.data(using: .utf8)
@@ -122,7 +120,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
         }.resume()
 
         readyState = XMLHttpRequestStatus.loading.rawValue
-        onreadystatechange?.call(withArguments: [])
+        emitEvent(type: .readyStateChange)
     }
 
     func setRequestHeader(_ header: String, _ value: String) {
@@ -155,8 +153,34 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
 
     // MARK: Private methods
 
-    private func emitEvent(type: XMLHttpRequestEvent.EventType, payload: DOMEvent) {
-        eventListeners[type]?.call(withArguments: [payload])
+    /// Links XHR Event Type to property callbacks
+    private func eventProperty(eventType: XMLHttpRequestEvent.EventType) -> JSValue? {
+        switch eventType {
+        case .abort:
+            return onabort
+        case .error:
+            return onerror
+        case .load:
+            return onload
+        case .loadStart:
+            return onsend
+        case .readyStateChange:
+            return onreadystatechange
+        default:
+            return nil
+        }
+    }
+
+    private func emitEvent(type: XMLHttpRequestEvent.EventType) {
+        let property = eventProperty(eventType: type)
+        let listener = eventListeners[type]
+
+        // Skip creating event payload if there are no callbacks for given eventType
+        guard property != nil || listener != nil else { return }
+
+        let eventPayload = XMLHttpRequestEvent(type: type, value: self, context: context)
+        property?.call(withArguments: [eventPayload])
+        listener?.call(withArguments: [eventPayload])
     }
 
     func clearJSValues() {
@@ -169,13 +193,9 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
     private func processResponse(_ data: Data?, _ response: URLResponse?, _ error: Error?) {
         guard let response = response as? HTTPURLResponse, error == nil else {
             readyState = XMLHttpRequestStatus.done.rawValue
-            onreadystatechange?.call(withArguments: [])
+            emitEvent(type: .readyStateChange)
 
-            let eventPayload = XMLHttpRequestEvent(type: .error, value: self, context: context)
-            emitEvent(type: .error, payload: eventPayload)
-            
-            onerror?.call(withArguments: [eventPayload])
-
+            emitEvent(type: .error)
             return
         }
 
@@ -184,7 +204,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
             guard let self else { return }
 
             if self.readyState == XMLHttpRequestStatus.unsent.rawValue {
-                self.onabort?.call(withArguments: [])
+                self.emitEvent(type: .abort)
                 return
             }
 
@@ -213,18 +233,10 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
             }
 
             self.readyState = XMLHttpRequestStatus.done.rawValue
-            self.onreadystatechange?.call(withArguments: [])
+            self.emitEvent(type: .readyStateChange)
 
-            var eventPayload = XMLHttpRequestEvent(type: .readyStateChange, value: self, context: self.context)
-            self.emitEvent(type: .readyStateChange, payload: eventPayload)
-
-            eventPayload = XMLHttpRequestEvent(type: .load, value: self, context: self.context)
-            self.emitEvent(type: .load, payload: eventPayload)
-
-            self.onload?.call(withArguments: [])
-
-            eventPayload = XMLHttpRequestEvent(type: .loadEnd, value: self, context: self.context)
-            self.emitEvent(type: .loadEnd, payload: eventPayload)
+            self.emitEvent(type: .load)
+            self.emitEvent(type: .loadEnd)
         }
     }
 }
