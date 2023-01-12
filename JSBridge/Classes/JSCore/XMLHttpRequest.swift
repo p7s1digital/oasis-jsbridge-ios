@@ -2,9 +2,6 @@ import Foundation
 import JavaScriptCore
 //import Logging
 
-private enum XMLHttpRequestStatus: NSNumber {
-    case unsent = 0, opened, headers, loading, done
-}
 
 @objc protocol XMLHttpRequestJSExport: JSExport {
     var onload: JSValue? { get set }
@@ -29,14 +26,18 @@ private enum XMLHttpRequestStatus: NSNumber {
 }
 
 @objc class XMLHttpRequest: NSObject {
+    enum ReadyState: NSNumber {
+        case unsent = 0, opened, headersReceived, loading, done
+    }
+
     // MARK: Internal properties
 
-    dynamic var readyState = XMLHttpRequestStatus.unsent.rawValue
     dynamic var onload: JSValue?
     dynamic var onsend: JSValue?
     dynamic var onreadystatechange: JSValue?
     dynamic var onabort: JSValue?
     dynamic var onerror: JSValue?
+    dynamic var readyState = ReadyState.unsent.rawValue
     dynamic var response: Any?
     dynamic var responseText: String?
     dynamic var responseType = ""
@@ -75,11 +76,11 @@ private enum XMLHttpRequestStatus: NSNumber {
             context.setObject(constructor, forKeyedSubscript: NSString(string: "XMLHttpRequest"))
 
             let xmlRequest = context.objectForKeyedSubscript("XMLHttpRequest")!
-            xmlRequest.setObject(XMLHttpRequestStatus.unsent.rawValue, forKeyedSubscript: NSString(string: "UNSENT"))
-            xmlRequest.setObject(XMLHttpRequestStatus.opened.rawValue, forKeyedSubscript: NSString(string: "OPENED"))
-            xmlRequest.setObject(XMLHttpRequestStatus.loading.rawValue, forKeyedSubscript: NSString(string: "LOADING"))
-            xmlRequest.setObject(XMLHttpRequestStatus.headers.rawValue, forKeyedSubscript: NSString(string: "HEADERS_RECEIVED"))
-            xmlRequest.setObject(XMLHttpRequestStatus.done.rawValue, forKeyedSubscript: NSString(string: "DONE"))
+            xmlRequest.setObject(ReadyState.unsent.rawValue, forKeyedSubscript: NSString(string: "UNSENT"))
+            xmlRequest.setObject(ReadyState.opened.rawValue, forKeyedSubscript: NSString(string: "OPENED"))
+            xmlRequest.setObject(ReadyState.loading.rawValue, forKeyedSubscript: NSString(string: "LOADING"))
+            xmlRequest.setObject(ReadyState.headersReceived.rawValue, forKeyedSubscript: NSString(string: "HEADERS_RECEIVED"))
+            xmlRequest.setObject(ReadyState.done.rawValue, forKeyedSubscript: NSString(string: "DONE"))
         }
     }
 }
@@ -99,7 +100,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
         request.httpMethod = httpMethod
         self.request = request
 
-        readyState = XMLHttpRequestStatus.opened.rawValue
+        readyState = ReadyState.opened.rawValue
         emitEvent(type: .readyStateChange)
     }
 
@@ -121,7 +122,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
             }
         }.resume()
 
-        readyState = XMLHttpRequestStatus.loading.rawValue
+        readyState = ReadyState.loading.rawValue
         emitEvent(type: .readyStateChange)
     }
 
@@ -130,7 +131,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
     }
 
     func abort() {
-        readyState = XMLHttpRequestStatus.unsent.rawValue
+        readyState = ReadyState.unsent.rawValue
     }
 
     func getAllResponseHeaders() -> String {
@@ -194,7 +195,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
 
     private func processResponse(_ data: Data?, _ response: URLResponse?, _ error: Error?) {
         guard let response = response as? HTTPURLResponse, error == nil else {
-            readyState = XMLHttpRequestStatus.done.rawValue
+            readyState = ReadyState.done.rawValue
             emitEvent(type: .readyStateChange)
 
             emitEvent(type: .error)
@@ -203,7 +204,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
 
         defer { clearJSValues() }
 
-        if readyState == XMLHttpRequestStatus.unsent.rawValue {
+        if readyState == ReadyState.unsent.rawValue {
             emitEvent(type: .abort)
             return
         }
@@ -232,7 +233,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
             responseHeaders[key] = value
         }
 
-        readyState = XMLHttpRequestStatus.done.rawValue
+        readyState = ReadyState.done.rawValue
         emitEvent(type: .readyStateChange)
 
         emitEvent(type: .load)
