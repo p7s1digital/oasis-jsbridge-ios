@@ -50,6 +50,7 @@ import JavaScriptCore
 
     private var eventListeners = [XMLHttpRequestEvent.EventType: JSValue]()
     private var request: URLRequest?
+    private var dataTask: URLSessionDataTask?
     private var responseHeaders = [String: String]()
     private var responseHeadersString = ""
 
@@ -116,14 +117,14 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
         let config = URLSessionConfiguration.default
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         let session = URLSession(configuration: config)
-        session.dataTask(with: request) { [weak self] data, response, error in
+
+        let dataTask = session.dataTask(with: request) { [weak self] data, response, error in
             self?.jsQueue.async {
                 self?.processResponse(data, response, error)
             }
-        }.resume()
-
-        readyState = ReadyState.loading.rawValue
-        emitEvent(type: .readyStateChange)
+        }
+        self.dataTask = dataTask
+        dataTask.resume()
     }
 
     func setRequestHeader(_ header: String, _ value: String) {
@@ -131,7 +132,19 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
     }
 
     func abort() {
+        if let dataTask {
+            dataTask.cancel()
+            self.dataTask = nil
+
+            readyState = ReadyState.done.rawValue
+            emitEvent(type: .readyStateChange)
+
+            emitEvent(type: .abort)
+            emitEvent(type: .loadEnd)
+        }
+
         readyState = ReadyState.unsent.rawValue
+        status = 0
     }
 
     func getAllResponseHeaders() -> String {
@@ -194,18 +207,18 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
     }
 
     private func processResponse(_ data: Data?, _ response: URLResponse?, _ error: Error?) {
+        defer { clearJSValues() }
+
+        if let error = error as? NSError, error.domain == NSURLErrorDomain, error.code == NSURLErrorCancelled {
+            return
+        }
+
         guard let response = response as? HTTPURLResponse, error == nil else {
             readyState = ReadyState.done.rawValue
             emitEvent(type: .readyStateChange)
 
             emitEvent(type: .error)
-            return
-        }
-
-        defer { clearJSValues() }
-
-        if readyState == ReadyState.unsent.rawValue {
-            emitEvent(type: .abort)
+            emitEvent(type: .loadEnd)
             return
         }
 
@@ -223,6 +236,8 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
                 self.responseText = String(data: data, encoding: .utf8)
                 self.response = self.responseText
             }
+        } else {
+            self.response = nil
         }
 
         for field in response.allHeaderFields {
@@ -232,6 +247,14 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
             responseHeadersString += (key + ": " + value + "\r\n")
             responseHeaders[key] = value
         }
+
+        readyState = ReadyState.headersReceived.rawValue
+        emitEvent(type: .readyStateChange)
+
+        readyState = ReadyState.loading.rawValue
+        emitEvent(type: .readyStateChange)
+
+        emitEvent(type: .progress)
 
         readyState = ReadyState.done.rawValue
         emitEvent(type: .readyStateChange)

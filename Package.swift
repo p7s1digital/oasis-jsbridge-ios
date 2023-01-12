@@ -7,9 +7,26 @@ let package = Package(
     products: [
         .library(name: "OasisJSBridge", targets: ["OasisJSBridge"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/AliSoftware/OHHTTPStubs.git", from: "9.1.0"),
+    ],
     targets: [
-        .target(name: "OasisJSBridge", path: "JSBridge",
-                resources: [.copy("Assets/promise.js"),
-                            .copy("Assets/customStringify.js")])
+        .target(
+            name: "OasisJSBridge",
+            path: "JSBridge",
+            sources: ["Classes"],
+            resources: [
+                .process("Assets"),
+            ]
+        ),
+        .testTarget(
+            name: "OasisJSBridgeTests",
+            dependencies: [
+                "OasisJSBridge",
+                .product(name: "OHHTTPStubsSwift", package: "OHHTTPStubs"),
+            ],
+            path: "JSBridge",
+            sources: ["Tests"]
+        )
     ]
 )
