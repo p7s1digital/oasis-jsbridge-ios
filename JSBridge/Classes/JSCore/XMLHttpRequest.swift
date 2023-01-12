@@ -210,11 +210,15 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
         listener?.call(withArguments: [eventPayload])
     }
 
+    /// Nullifies all JSValue instances to avoid a retain cycle causing the JSContext instance to be leaked
     func clearJSValues() {
         onreadystatechange = nil
         onload = nil
+        onsend = nil
         onabort = nil
         onerror = nil
+
+        eventListeners.removeAll()
     }
 
     private func finishWithError() {
