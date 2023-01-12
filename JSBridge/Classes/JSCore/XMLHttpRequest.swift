@@ -116,7 +116,9 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         let session = URLSession(configuration: config)
         session.dataTask(with: request) { [weak self] data, response, error in
-            self?.processResponse(data, response, error)
+            self?.jsQueue.async {
+                self?.processResponse(data, response, error)
+            }
         }.resume()
 
         readyState = XMLHttpRequestStatus.loading.rawValue
@@ -199,44 +201,41 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
             return
         }
 
-        jsQueue.async { [weak self] in
-            defer { self?.clearJSValues() }
-            guard let self else { return }
+        defer { clearJSValues() }
 
-            if self.readyState == XMLHttpRequestStatus.unsent.rawValue {
-                self.emitEvent(type: .abort)
-                return
-            }
-
-            self.status = NSNumber(value: response.statusCode)
-
-//            if !response.isInSuccessRange {
-//                jTrace("XHR response returned with status code \(response.statusCode) for \"\(String(describing: response.url))\"", type: .warning, category: .playerKit)
-//            }
-
-            if let data {
-                if self.responseType == "json" {
-                    let json = try? JSONSerialization.jsonObject(with: data)
-                    self.response = json
-                } else {
-                    self.responseText = String(data: data, encoding: .utf8)
-                    self.response = self.responseText
-                }
-            }
-
-            for field in response.allHeaderFields {
-                guard
-                    let key = (field.key as? String)?.lowercased(),
-                    let value = field.value as? String else { continue }
-                self.responseHeadersString += (key + ": " + value + "\r\n")
-                self.responseHeaders[key] = value
-            }
-
-            self.readyState = XMLHttpRequestStatus.done.rawValue
-            self.emitEvent(type: .readyStateChange)
-
-            self.emitEvent(type: .load)
-            self.emitEvent(type: .loadEnd)
+        if readyState == XMLHttpRequestStatus.unsent.rawValue {
+            emitEvent(type: .abort)
+            return
         }
+
+        status = NSNumber(value: response.statusCode)
+
+//        if !response.isInSuccessRange {
+//            jTrace("XHR response returned with status code \(response.statusCode) for \"\(String(describing: response.url))\"", type: .warning, category: .playerKit)
+//        }
+
+        if let data {
+            if responseType == "json" {
+                self.responseText = nil
+                self.response = try? JSONSerialization.jsonObject(with: data)
+            } else {
+                self.responseText = String(data: data, encoding: .utf8)
+                self.response = self.responseText
+            }
+        }
+
+        for field in response.allHeaderFields {
+            guard
+                let key = (field.key as? String)?.lowercased(),
+                let value = field.value as? String else { continue }
+            responseHeadersString += (key + ": " + value + "\r\n")
+            responseHeaders[key] = value
+        }
+
+        readyState = XMLHttpRequestStatus.done.rawValue
+        emitEvent(type: .readyStateChange)
+
+        emitEvent(type: .load)
+        emitEvent(type: .loadEnd)
     }
 }
