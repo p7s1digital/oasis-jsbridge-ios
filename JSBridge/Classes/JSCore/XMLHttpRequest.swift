@@ -54,10 +54,6 @@ import JavaScriptCore
     private var responseHeaders = [String: String]()
     private var responseHeadersString = ""
 
-    private lazy var urlCharacterSet: CharacterSet = {
-        CharacterSet(charactersIn: ";,/?:@&=+$-_.!~*'()%").union(.urlHostAllowed)
-    }()
-
     // MARK: Init
 
     init(jsQueue: DispatchQueue, context: JSContext) {
@@ -90,8 +86,7 @@ import JavaScriptCore
 
 extension XMLHttpRequest: XMLHttpRequestJSExport {
     func open(_ httpMethod: String, _ urlString: String) {
-//        guard let encodedString = urlString.addingPercentEncoding(withAllowedCharacters: urlCharacterSet),
-          guard let url = URL(string: urlString) else {
+        guard let url = URL(string: urlString) else {
 //            jTrace("Cannot create URL from \(urlString)", type: .error, category: .playerKit)
             emitEvent(type: .error)
             return
