@@ -88,24 +88,30 @@ import JavaScriptCore
 
 extension XMLHttpRequest: XMLHttpRequestJSExport {
     func open(_ httpMethod: String, _ urlString: String) {
-        guard let url = URL(string: urlString) else {
+        if let url = URL(string: urlString) {
+            var request = URLRequest(url: url)
+            request.httpMethod = httpMethod
+            self.request = request
+        } else {
 //            jTrace("Cannot create URL from \(urlString)", type: .error, category: .playerKit)
-            emitEvent(type: .error)
-            return
+            self.request = nil
         }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = httpMethod
-        self.request = request
 
         readyState = ReadyState.opened.rawValue
         emitEvent(type: .readyStateChange)
     }
 
     func send(_ data: Any?) {
-        guard var request else { return }
+        // DOMException: Failed to execute 'send' on 'XMLHttpRequest': The object's state must be OPENED.
+        guard readyState == ReadyState.opened.rawValue else { return }
 
         emitEvent(type: .loadStart)
+
+        // Requests created with invalid URL shall fail.
+        guard var request else {
+            finishWithError()
+            return
+        }
 
         if let payload = data as? String {
             request.httpBody = payload.data(using: .utf8)
@@ -199,6 +205,14 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
         onerror = nil
     }
 
+    private func finishWithError() {
+        readyState = ReadyState.done.rawValue
+        emitEvent(type: .readyStateChange)
+
+        emitEvent(type: .error)
+        emitEvent(type: .loadEnd)
+    }
+
     private func processResponse(_ data: Data?, _ response: URLResponse?, _ error: Error?) {
         defer { clearJSValues() }
 
@@ -207,11 +221,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
         }
 
         guard let response = response as? HTTPURLResponse, error == nil else {
-            readyState = ReadyState.done.rawValue
-            emitEvent(type: .readyStateChange)
-
-            emitEvent(type: .error)
-            emitEvent(type: .loadEnd)
+            finishWithError()
             return
         }
 

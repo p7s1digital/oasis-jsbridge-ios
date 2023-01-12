@@ -6,6 +6,7 @@ import OHHTTPStubsSwift
 
 final class XMLHttpRequestTests: XCTestCase {
     private let timeout: TimeInterval = 1
+    private let brokenURL = "h://& ?" // invalid both for browser and for Foundation.URL
 
     private var interpreter: JavascriptInterpreter!
     private var eventLogger: JSEventLogger!
@@ -77,6 +78,58 @@ extension XMLHttpRequestTests {
         XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
     }
 
+    func testEvents_properties_open() {
+        // GIVEN
+        let url = "https://test.url/api/request"
+        let expectedEvents = """
+        readystatechange 1
+        """.components(separatedBy: "\n")
+
+        // WHEN
+        let expectation = self.expectation(description: "Events received")
+        expectation.expectedFulfillmentCount = expectedEvents.count
+        expectation.assertForOverFulfill = false
+        eventLogger.configure(expectation: expectation)
+
+        let script = """
+        \(eventHandler)
+        var xhr = new XMLHttpRequest();
+        \(eventProperties)
+        xhr.open("GET", "\(url)");
+        """
+        interpreter.evaluateString(js: script)
+        wait(for: [expectation], timeout: timeout)
+
+        // THEN
+        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+    }
+
+    func testEvents_properties_open_brokenURL() {
+        // GIVEN
+        let url = brokenURL
+        let expectedEvents = """
+        readystatechange 1
+        """.components(separatedBy: "\n")
+
+        // WHEN
+        let expectation = self.expectation(description: "Events received")
+        expectation.expectedFulfillmentCount = expectedEvents.count
+        expectation.assertForOverFulfill = false
+        eventLogger.configure(expectation: expectation)
+
+        let script = """
+        \(eventHandler)
+        var xhr = new XMLHttpRequest();
+        \(eventProperties)
+        xhr.open("GET", "\(url)");
+        """
+        interpreter.evaluateString(js: script)
+        wait(for: [expectation], timeout: timeout)
+
+        // THEN
+        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+    }
+
     func testEvents_properties_openAbort() {
         // GIVEN
         let url = "https://test.url/api/request"
@@ -137,6 +190,35 @@ extension XMLHttpRequestTests {
         var xhr = new XMLHttpRequest();
         \(eventProperties)
         xhr.open("GET", "\(url)");
+        xhr.send();
+        """
+        interpreter.evaluateString(js: script)
+        wait(for: [expectation], timeout: timeout)
+
+        // THEN
+        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+    }
+
+    func testEvents_properties_openSend_brokenURL() {
+        // GIVEN
+        let expectedEvents = """
+        readystatechange 1
+        loadstart 1
+        readystatechange 4
+        error 4
+        """.components(separatedBy: "\n")
+
+        // WHEN
+        let expectation = self.expectation(description: "Events received")
+        expectation.expectedFulfillmentCount = expectedEvents.count
+        expectation.assertForOverFulfill = false
+        eventLogger.configure(expectation: expectation)
+
+        let script = """
+        \(eventHandler)
+        var xhr = new XMLHttpRequest();
+        \(eventProperties)
+        xhr.open("GET", "\(brokenURL)");
         xhr.send();
         """
         interpreter.evaluateString(js: script)
@@ -217,6 +299,32 @@ extension XMLHttpRequestTests {
         XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
     }
 
+    func testEvents_properties_send() {
+        // GIVEN
+        let expectedEvents = """
+        MANUAL 0
+        """.components(separatedBy: "\n")
+
+        // WHEN
+        let expectation = self.expectation(description: "Events received")
+        expectation.expectedFulfillmentCount = expectedEvents.count
+        expectation.assertForOverFulfill = false
+        eventLogger.configure(expectation: expectation)
+
+        let script = """
+        \(eventHandler)
+        var xhr = new XMLHttpRequest();
+        \(eventProperties)
+        xhr.send();
+        logEvent('MANUAL', xhr);
+        """
+        interpreter.evaluateString(js: script)
+        wait(for: [expectation], timeout: timeout)
+
+        // THEN
+        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+    }
+
     // MARK: - Event listeners
 
     func testEvents_listeners_abort() {
@@ -237,6 +345,58 @@ extension XMLHttpRequestTests {
         \(eventListeners)
         xhr.abort();
         logEvent('MANUAL', xhr);
+        """
+        interpreter.evaluateString(js: script)
+        wait(for: [expectation], timeout: timeout)
+
+        // THEN
+        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+    }
+
+    func testEvents_listeners_open() {
+        // GIVEN
+        let url = "https://test.url/api/request"
+        let expectedEvents = """
+        readystatechange 1
+        """.components(separatedBy: "\n")
+
+        // WHEN
+        let expectation = self.expectation(description: "Events received")
+        expectation.expectedFulfillmentCount = expectedEvents.count
+        expectation.assertForOverFulfill = false
+        eventLogger.configure(expectation: expectation)
+
+        let script = """
+        \(eventHandler)
+        var xhr = new XMLHttpRequest();
+        \(eventListeners)
+        xhr.open("GET", "\(url)");
+        """
+        interpreter.evaluateString(js: script)
+        wait(for: [expectation], timeout: timeout)
+
+        // THEN
+        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+    }
+
+    func testEvents_listeners_open_brokenURL() {
+        // GIVEN
+        let url = brokenURL
+        let expectedEvents = """
+        readystatechange 1
+        """.components(separatedBy: "\n")
+
+        // WHEN
+        let expectation = self.expectation(description: "Events received")
+        expectation.expectedFulfillmentCount = expectedEvents.count
+        expectation.assertForOverFulfill = false
+        eventLogger.configure(expectation: expectation)
+
+        let script = """
+        \(eventHandler)
+        var xhr = new XMLHttpRequest();
+        \(eventListeners)
+        xhr.open("GET", "\(url)");
         """
         interpreter.evaluateString(js: script)
         wait(for: [expectation], timeout: timeout)
@@ -307,6 +467,36 @@ extension XMLHttpRequestTests {
         var xhr = new XMLHttpRequest();
         \(eventListeners)
         xhr.open("GET", "\(url)");
+        xhr.send();
+        """
+        interpreter.evaluateString(js: script)
+        wait(for: [expectation], timeout: timeout)
+
+        // THEN
+        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+    }
+
+    func testEvents_listeners_openSend_brokenURL() {
+        // GIVEN
+        let expectedEvents = """
+        readystatechange 1
+        loadstart 1
+        readystatechange 4
+        error 4
+        loadend 4
+        """.components(separatedBy: "\n")
+
+        // WHEN
+        let expectation = self.expectation(description: "Events received")
+        expectation.expectedFulfillmentCount = expectedEvents.count
+        expectation.assertForOverFulfill = false
+        eventLogger.configure(expectation: expectation)
+
+        let script = """
+        \(eventHandler)
+        var xhr = new XMLHttpRequest();
+        \(eventListeners)
+        xhr.open("GET", "\(brokenURL)");
         xhr.send();
         """
         interpreter.evaluateString(js: script)
@@ -388,4 +578,31 @@ extension XMLHttpRequestTests {
         // THEN
         XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
     }
+
+    func testEvents_listeners_send() {
+        // GIVEN
+        let expectedEvents = """
+        MANUAL 0
+        """.components(separatedBy: "\n")
+
+        // WHEN
+        let expectation = self.expectation(description: "Events received")
+        expectation.expectedFulfillmentCount = expectedEvents.count
+        expectation.assertForOverFulfill = false
+        eventLogger.configure(expectation: expectation)
+
+        let script = """
+        \(eventHandler)
+        var xhr = new XMLHttpRequest();
+        \(eventListeners)
+        xhr.send();
+        logEvent('MANUAL', xhr);
+        """
+        interpreter.evaluateString(js: script)
+        wait(for: [expectation], timeout: timeout)
+
+        // THEN
+        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+    }
+
 }
