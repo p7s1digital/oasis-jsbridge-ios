@@ -1,17 +1,32 @@
 import Foundation
 import JavaScriptCore
 
+/// https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest
+/// https://xhr.spec.whatwg.org/#interface-xmlhttprequest
 @objc protocol XMLHttpRequestJSExport: JSExport {
-    var onload: JSValue? { get set }
-    var onsend: JSValue? { get set }
-    var onreadystatechange: JSValue? { get set }
-    var onabort: JSValue? { get set }
-    var onerror: JSValue? { get set }
+    // Instance properties
+
     var readyState: NSNumber { get set }
     var response: Any? { get set }
     var responseText: String? { get set }
     var responseType: String { get set }
     var status: NSNumber { get set }
+
+    // Events
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest#events
+    var onreadystatechange: JSValue? { get set }
+    var onload: JSValue? { get set }
+    var onsend: JSValue? { get set }
+    var onabort: JSValue? { get set }
+    var onerror: JSValue? { get set }
+
+    /// https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
+    func addEventListener(_ type: String, _ handler: JSValue)
+    /// https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/removeEventListener
+    func removeEventListener(_ type: String, _ handler: JSValue)
+
+    // Instance methods
 
     func open(_ httpMethod: String, _ url: String)
     func send(_ data: Any?)
@@ -19,27 +34,36 @@ import JavaScriptCore
     func setRequestHeader(_ header: String, _ value: String)
     func getAllResponseHeaders() -> String
     func getResponseHeader(_ name: String) -> String?
-    func addEventListener(_ type: String, _ handler: JSValue)
-    func removeEventListener(_ type: String, _ handler: JSValue)
 }
 
+/**
+ Native implementation of XMLHttpRequest object to request data from a server.
+ It is available out-of-the-box in all modern browsers and in WebKit, but not available in JavaScriptCore.
+
+ Limitations of the native implementation:
+ - Only a limited set of event callback properties is available, but all event listener events are available.
+ - Only the first event listener registered for each event type will be called.
+ - Requests cannot be reused. To avoid capturing `JSContext`, all request callbacks and listeners are removed after handling the response.
+ */
 @objc class XMLHttpRequest: NSObject {
+    /// https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/readyState
     enum ReadyState: NSNumber {
         case unsent = 0, opened, headersReceived, loading, done
     }
 
     // MARK: Internal properties
 
-    dynamic var onload: JSValue?
-    dynamic var onsend: JSValue?
-    dynamic var onreadystatechange: JSValue?
-    dynamic var onabort: JSValue?
-    dynamic var onerror: JSValue?
     dynamic var readyState = ReadyState.unsent.rawValue
     dynamic var response: Any?
     dynamic var responseText: String?
     dynamic var responseType = ""
     dynamic var status: NSNumber = 0
+
+    dynamic var onreadystatechange: JSValue?
+    dynamic var onload: JSValue?
+    dynamic var onsend: JSValue?
+    dynamic var onabort: JSValue?
+    dynamic var onerror: JSValue?
 
     // MARK: Private properties
 
@@ -221,6 +245,9 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
         eventListeners.removeAll()
     }
 
+    /// Performs a chain of actions which happens when XHR
+    ///   - has been opened and sent with invalid/broken URL;
+    ///   - fails with a network error.
     private func finishWithError() {
         readyState = ReadyState.done.rawValue
         emitEvent(type: .readyStateChange)
@@ -241,23 +268,12 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
             return
         }
 
-        status = NSNumber(value: response.statusCode)
-
         if !(200 ..< 300 ~= response.statusCode) {
             log("XHR response returned with status code \(response.statusCode) for \"\(String(describing: response.url))\"")
         }
 
-        if let data {
-            if responseType == "json" {
-                self.responseText = nil
-                self.response = try? JSONSerialization.jsonObject(with: data)
-            } else {
-                self.responseText = String(data: data, encoding: .utf8)
-                self.response = self.responseText
-            }
-        } else {
-            self.response = nil
-        }
+        status = NSNumber(value: response.statusCode)
+        decodeResponse(data: data, responseType: responseType)
 
         for field in response.allHeaderFields {
             guard
@@ -280,5 +296,21 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
 
         emitEvent(type: .load)
         emitEvent(type: .loadEnd)
+    }
+
+    private func decodeResponse(data: Data?, responseType: String) {
+        // Reset fields state
+        responseText = nil
+        response = nil
+
+        guard let data else { return }
+
+        switch responseType {
+        case "json":
+            response = try? JSONSerialization.jsonObject(with: data)
+        default:
+            responseText = String(data: data, encoding: .utf8)
+            response = responseText
+        }
     }
 }
