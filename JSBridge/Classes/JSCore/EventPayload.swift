@@ -44,8 +44,8 @@ class EventPayload: NSObject {
     var target: JSValue?
     var srcElement: JSValue?
 
-    init(type: EventHandlerEventType, value: XMLHttpRequestJSExport) {
-        let target = JSContext.current().flatMap { JSValue(object: value, in: $0) }
+    init(type: EventHandlerEventType, value: XMLHttpRequestJSExport, context: JSContext?) {
+        let target = (context ?? JSContext.current()).flatMap { JSValue(object: value, in: $0) }
 
         self.type = type.rawValue
         self.target = target

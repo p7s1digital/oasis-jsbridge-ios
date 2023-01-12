@@ -45,6 +45,8 @@ private enum XMLHttpRequestStatus: NSNumber {
     // MARK: Private properties
 
     private let jsQueue: DispatchQueue
+    private weak var context: JSContext?
+
     private var responseHeaders = [String: String]()
     private var responseHeadersString = ""
     private var request: URLRequest?
@@ -57,8 +59,10 @@ private enum XMLHttpRequestStatus: NSNumber {
 
     // MARK: Init
 
-    init(_ jsQueue: DispatchQueue = DispatchQueue.global()) {
+    init(jsQueue: DispatchQueue, context: JSContext) {
         self.jsQueue = jsQueue
+        self.context = context
+
         super.init()
     }
 
@@ -66,8 +70,11 @@ private enum XMLHttpRequestStatus: NSNumber {
 
     static func configure(jsQueue: DispatchQueue, context: JSContext) {
         jsQueue.async {
-            let constructor: @convention(block) () -> XMLHttpRequest = { XMLHttpRequest(jsQueue) }
+            let constructor: @convention(block) () -> XMLHttpRequest = {
+                XMLHttpRequest(jsQueue: jsQueue, context: context)
+            }
             context.setObject(constructor, forKeyedSubscript: NSString(string: "XMLHttpRequest"))
+
             let xmlRequest = context.objectForKeyedSubscript("XMLHttpRequest")!
             xmlRequest.setObject(XMLHttpRequestStatus.unsent.rawValue, forKeyedSubscript: NSString(string: "UNSENT"))
             xmlRequest.setObject(XMLHttpRequestStatus.opened.rawValue, forKeyedSubscript: NSString(string: "OPENED"))
@@ -101,7 +108,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
         guard var request else { return }
 
         onsend?.call(withArguments: [])
-        let eventPayload = EventPayload(type: .loadStart, value: self)
+        let eventPayload = EventPayload(type: .loadStart, value: self, context: context)
         emitEvent(type: .loadStart, payload: eventPayload)
 
         if let payload = data as? String {
@@ -168,7 +175,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
             readyState = XMLHttpRequestStatus.done.rawValue
             onreadystatechange?.call(withArguments: [])
 
-            let eventPayload = EventPayload(type: .error, value: self)
+            let eventPayload = EventPayload(type: .error, value: self, context: context)
             emitEvent(type: .error, payload: eventPayload)
             
             onerror?.call(withArguments: [eventPayload])
@@ -212,15 +219,15 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
             self.readyState = XMLHttpRequestStatus.done.rawValue
             self.onreadystatechange?.call(withArguments: [])
 
-            var eventPayload = EventPayload(type: .readyStateChange, value: self)
+            var eventPayload = EventPayload(type: .readyStateChange, value: self, context: self.context)
             self.emitEvent(type: .readyStateChange, payload: eventPayload)
 
-            eventPayload = EventPayload(type: .load, value: self)
+            eventPayload = EventPayload(type: .load, value: self, context: self.context)
             self.emitEvent(type: .load, payload: eventPayload)
 
             self.onload?.call(withArguments: [])
 
-            eventPayload = EventPayload(type: .loadEnd, value: self)
+            eventPayload = EventPayload(type: .loadEnd, value: self, context: self.context)
             self.emitEvent(type: .loadEnd, payload: eventPayload)
         }
     }
