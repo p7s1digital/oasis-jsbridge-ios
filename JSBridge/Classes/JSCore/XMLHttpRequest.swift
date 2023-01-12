@@ -1,7 +1,5 @@
 import Foundation
 import JavaScriptCore
-//import Logging
-
 
 @objc protocol XMLHttpRequestJSExport: JSExport {
     var onload: JSValue? { get set }
@@ -48,6 +46,7 @@ import JavaScriptCore
     private let jsQueue: DispatchQueue
     private weak var context: JSContext?
     private let urlSession: URLSession
+    private let logger: ((String) -> Void)?
     private var eventListeners = [XMLHttpRequestEvent.EventType: JSValue]()
 
     private var request: URLRequest?
@@ -57,20 +56,26 @@ import JavaScriptCore
 
     // MARK: Init
 
-    init(urlSession: URLSession, jsQueue: DispatchQueue, context: JSContext) {
+    init(urlSession: URLSession, jsQueue: DispatchQueue, context: JSContext, logger: ((String) -> Void)?) {
         self.urlSession = urlSession
         self.jsQueue = jsQueue
         self.context = context
+        self.logger = logger
 
         super.init()
     }
 
     // MARK: Internal static methods
 
-    static func configure(urlSession: URLSession, jsQueue: DispatchQueue, context: JSContext, onCreate: ((XMLHttpRequest) -> Void)? = nil) {
+    static func configure(
+        urlSession: URLSession,
+        jsQueue: DispatchQueue,
+        context: JSContext,
+        logger: ((String) -> Void)? = nil
+    ) {
         jsQueue.async {
             let constructor: @convention(block) () -> XMLHttpRequest = {
-                XMLHttpRequest(urlSession: urlSession, jsQueue: jsQueue, context: context)
+                XMLHttpRequest(urlSession: urlSession, jsQueue: jsQueue, context: context, logger: logger)
             }
             context.setObject(constructor, forKeyedSubscript: NSString(string: "XMLHttpRequest"))
 
@@ -93,7 +98,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
             request.httpMethod = httpMethod
             self.request = request
         } else {
-//            jTrace("Cannot create URL from \(urlString)", type: .error, category: .playerKit)
+            log("Cannot create URL from \(urlString)")
             self.request = nil
         }
 
@@ -103,7 +108,10 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
 
     func send(_ data: Any?) {
         // DOMException: Failed to execute 'send' on 'XMLHttpRequest': The object's state must be OPENED.
-        guard readyState == ReadyState.opened.rawValue else { return }
+        guard readyState == ReadyState.opened.rawValue else {
+            log("Failed to execute 'send' on 'XMLHttpRequest': The object's state must be \(ReadyState.opened.rawValue) (OPENED), but it is \(readyState)")
+            return
+        }
 
         emitEvent(type: .loadStart)
 
@@ -168,6 +176,10 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
 
     // MARK: Private methods
 
+    private func log(_ message: String) {
+        logger?(message)
+    }
+
     /// Links XHR Event Type to property callbacks
     private func eventProperty(eventType: XMLHttpRequestEvent.EventType) -> JSValue? {
         switch eventType {
@@ -227,9 +239,9 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
 
         status = NSNumber(value: response.statusCode)
 
-//        if !response.isInSuccessRange {
-//            jTrace("XHR response returned with status code \(response.statusCode) for \"\(String(describing: response.url))\"", type: .warning, category: .playerKit)
-//        }
+        if !(200 ..< 300 ~= response.statusCode) {
+            log("XHR response returned with status code \(response.statusCode) for \"\(String(describing: response.url))\"")
+        }
 
         if let data {
             if responseType == "json" {
