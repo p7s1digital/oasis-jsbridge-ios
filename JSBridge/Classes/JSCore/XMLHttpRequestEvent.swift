@@ -1,18 +1,8 @@
 import Foundation
 import JavaScriptCore
 
-enum EventHandlerEventType: String, CaseIterable {
-    case loadStart = "loadstart"
-    case progress
-    case abort
-    case error
-    case load
-    case timeout
-    case loadEnd = "loadend"
-    case readyStateChange = "readystatechange"
-}
+@objc protocol DOMEvent: JSExport {
 
-@objc protocol EventPayloadProtocol: JSExport {
     var type: String { get }
     var target: JSValue? { get }
     var srcElement: JSValue? { get }
@@ -35,16 +25,30 @@ enum EventHandlerEventType: String, CaseIterable {
 
     var isTrusted: Bool { get }
     var timeStamp: Int { get }
+
 }
 
-/// Object for the event, emitted by the XMLHTTPRequest
-class EventPayload: NSObject {
+/// Object for the event, emitted by the XMLHttpRequest
+class XMLHttpRequestEvent: NSObject {
+
+    /// https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest#events
+    enum EventType: String, CaseIterable {
+        case abort
+        case error
+        case load
+        case loadEnd = "loadend"
+        case loadStart = "loadstart"
+        case progress
+        case readyStateChange = "readystatechange"
+        case timeout
+    }
+
     var type: String
     var currentTarget: JSValue?
     var target: JSValue?
     var srcElement: JSValue?
 
-    init(type: EventHandlerEventType, value: XMLHttpRequestJSExport, context: JSContext?) {
+    init(type: XMLHttpRequestEvent.EventType, value: XMLHttpRequestJSExport, context: JSContext?) {
         let target = (context ?? JSContext.current()).flatMap { JSValue(object: value, in: $0) }
 
         self.type = type.rawValue
@@ -52,11 +56,13 @@ class EventPayload: NSObject {
         currentTarget = target
         srcElement = target
     }
+
 }
 
-// MARK: - EventPayloadProtocol
+// MARK: - DOMEvent
 
-extension EventPayload: EventPayloadProtocol {
+extension XMLHttpRequestEvent: DOMEvent {
+
     var stopPropagation: (() -> Void) { {} }
     var stopImmediatePropagation: (() -> Void) { {} }
     var preventDefault: (() -> Void) { {} }
@@ -71,4 +77,5 @@ extension EventPayload: EventPayloadProtocol {
     var lengthComputable: Bool { false }
     var returnValue: Bool { true }
     var timeStamp: Int { 0 }
+
 }

@@ -47,11 +47,10 @@ private enum XMLHttpRequestStatus: NSNumber {
     private let jsQueue: DispatchQueue
     private weak var context: JSContext?
 
+    private var eventListeners = [XMLHttpRequestEvent.EventType: JSValue]()
+    private var request: URLRequest?
     private var responseHeaders = [String: String]()
     private var responseHeadersString = ""
-    private var request: URLRequest?
-
-    private var eventHandlerDictionary = [EventHandlerEventType: JSValue]()
 
     private lazy var urlCharacterSet: CharacterSet = {
         CharacterSet(charactersIn: ";,/?:@&=+$-_.!~*'()%").union(.urlHostAllowed)
@@ -108,7 +107,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
         guard var request else { return }
 
         onsend?.call(withArguments: [])
-        let eventPayload = EventPayload(type: .loadStart, value: self, context: context)
+        let eventPayload = XMLHttpRequestEvent(type: .loadStart, value: self, context: context)
         emitEvent(type: .loadStart, payload: eventPayload)
 
         if let payload = data as? String {
@@ -143,24 +142,21 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
     }
 
     func addEventListener(_ type: String, _ handler: JSValue) {
-        guard let eventHandlerEventType = EventHandlerEventType(rawValue: type),
-              eventHandlerDictionary[eventHandlerEventType] == nil else { return }
+        guard let eventType = XMLHttpRequestEvent.EventType(rawValue: type), eventListeners[eventType] == nil else { return }
 
-        eventHandlerDictionary[eventHandlerEventType] = handler
+        eventListeners[eventType] = handler
     }
 
     func removeEventListener(_ type: String, _ handler: JSValue) {
-        guard let eventHandlerEventType = EventHandlerEventType(rawValue: type) else { return }
+        guard let eventType = XMLHttpRequestEvent.EventType(rawValue: type) else { return }
 
-        eventHandlerDictionary[eventHandlerEventType] = nil
+        eventListeners[eventType] = nil
     }
 
     // MARK: Private methods
 
-    private func emitEvent(type: EventHandlerEventType, payload: EventPayloadProtocol) {
-        guard let eventHandler = eventHandlerDictionary[type] else { return }
-
-        eventHandler.call(withArguments: [payload])
+    private func emitEvent(type: XMLHttpRequestEvent.EventType, payload: DOMEvent) {
+        eventListeners[type]?.call(withArguments: [payload])
     }
 
     func clearJSValues() {
@@ -175,7 +171,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
             readyState = XMLHttpRequestStatus.done.rawValue
             onreadystatechange?.call(withArguments: [])
 
-            let eventPayload = EventPayload(type: .error, value: self, context: context)
+            let eventPayload = XMLHttpRequestEvent(type: .error, value: self, context: context)
             emitEvent(type: .error, payload: eventPayload)
             
             onerror?.call(withArguments: [eventPayload])
@@ -219,15 +215,15 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
             self.readyState = XMLHttpRequestStatus.done.rawValue
             self.onreadystatechange?.call(withArguments: [])
 
-            var eventPayload = EventPayload(type: .readyStateChange, value: self, context: self.context)
+            var eventPayload = XMLHttpRequestEvent(type: .readyStateChange, value: self, context: self.context)
             self.emitEvent(type: .readyStateChange, payload: eventPayload)
 
-            eventPayload = EventPayload(type: .load, value: self, context: self.context)
+            eventPayload = XMLHttpRequestEvent(type: .load, value: self, context: self.context)
             self.emitEvent(type: .load, payload: eventPayload)
 
             self.onload?.call(withArguments: [])
 
-            eventPayload = EventPayload(type: .loadEnd, value: self, context: self.context)
+            eventPayload = XMLHttpRequestEvent(type: .loadEnd, value: self, context: self.context)
             self.emitEvent(type: .loadEnd, payload: eventPayload)
         }
     }
