@@ -15,43 +15,22 @@
  */
 
 import XCTest
-import OHHTTPStubs
 import JavaScriptCore
-
+import OHHTTPStubs
 @testable import OasisJSBridge
 
-@objc protocol NativeProtocol: JSExport {
-    func sendEvent(_ eventName: String, _ payload: Any?)
-}
-@objc class Native: NSObject, NativeProtocol {
-
-    var expectation: XCTestExpectation?
-    var receivedEvents: [(name: String, payload: Any?)] = []
-
-    func resetAndSetExpectation(_ expectation: XCTestExpectation) {
-        receivedEvents = []
-        self.expectation = expectation
-    }
-
-    func sendEvent(_ eventName: String, _ payload: Any?) {
-        receivedEvents.append((name: eventName, payload: payload))
-        expectation?.fulfill()
-    }
-}
-
-@objc protocol VehicleProtocol: JSExport {
+@objc private protocol VehicleProtocol: JSExport {
     var brand: String? { get }
 }
-@objc class Vehicle: NSObject, VehicleProtocol {
+@objc private class Vehicle: NSObject, VehicleProtocol {
     var brand: String?
 }
 
-@objc protocol AdSchedulerProtocol: JSExport {
+@objc private protocol AdSchedulerProtocol: JSExport {
     func update(_ payload: Any?) -> JSValue
     func fullfillExpectationAfterResolve()
 }
-@objc class AdScheduler: NSObject, AdSchedulerProtocol {
-
+@objc private class AdScheduler: NSObject, AdSchedulerProtocol {
     let interpreter: JavascriptInterpreterProtocol
     let expectation: XCTestExpectation
 
@@ -75,15 +54,8 @@ import JavaScriptCore
     }
 }
 
-
 class JavascriptInterpreterTest: XCTestCase {
-
     private let native = Native()
-    private var stubbedRequests: [(url: String, response: String)] = []
-
-    override func setUp() {
-        super.setUp()
-    }
 
     override class func tearDown() {
         HTTPStubs.removeAllStubs()
@@ -138,22 +110,17 @@ class JavascriptInterpreterTest: XCTestCase {
         // Local resource file: test.js
         // - content:
         // sendEvent("localFileEvent", {isHere: true});
-        let bundle = Bundle(for: type(of: self))
-        subject.evaluateLocalFile(bundle: bundle, filename: "test.js")
+        subject.evaluateLocalFile(bundle: Bundle.module, filename: "test.js")
 
         self.waitForExpectations(timeout: 10)
 
         // THEN
         XCTAssertEqual(native.receivedEvents.count, 1)
-        let event = native.receivedEvents.first
-        XCTAssertEqual(event?.name, "localFileEvent")
-        if let payload = event?.payload as? NSDictionary,
-           let isHere = payload["isHere"] as? NSNumber {
-            XCTAssertTrue(isHere.boolValue)
-        } else {
-            XCTAssertTrue(false)
+        guard let event = native.receivedEvents.first, let payload = event.payload as? NSDictionary else {
+            return XCTFail("Unexpected payload")
         }
-
+        XCTAssertEqual(event.name, "localFileEvent")
+        XCTAssertEqual((payload["isHere"] as? NSNumber)?.boolValue, true)
     }
 
     func testConsole() {
@@ -382,113 +349,6 @@ class JavascriptInterpreterTest: XCTestCase {
         self.waitForExpectations(timeout: 10)
     }
 
-    func testXMLHTTPRequest() {
-        // GIVEN
-        let url = "https://test.url/api/request"
-        let responseText = "{\"testKey\": \"testValue\"}"
-        stubJsonRequest(url: url, responseText: responseText)
-
-        let subject = createJavascriptInterpreter()
-
-        // WHEN
-        let js = """
-            var xhr = new XMLHttpRequest();
-            xhr.responseType = "json";
-            xhr.open("GET", "\(url)");
-            xhr.send();
-            xhr.onload = function() {
-                console.log("sending native event xhrDone, payload:", xhr.response, "...");
-                native.sendEvent("xhrDone", xhr.response);
-            }
-        """
-        subject.evaluateString(js: js, cb: nil)
-
-        let expectation = self.expectation(description: "js")
-        native.resetAndSetExpectation(expectation)
-
-        self.waitForExpectations(timeout: 10)
-
-        // THEN
-        XCTAssertEqual(native.receivedEvents.count, 1)
-        let event = native.receivedEvents[0]
-        XCTAssertEqual(event.name, "xhrDone")
-        if let payload = event.payload as? NSDictionary,
-            let testKey = payload["testKey"] as? String {
-            XCTAssertEqual(testKey, "testValue")
-        } else {
-            XCTAssertTrue(false)
-        }
-
-    }
-
-    func testXMLHTTPRequest_invalidURL() {
-        // GIVEN
-        let url = "https://test.url/api/request?code=${CODE}" // curly brackets are not allowed in URLs
-
-        let subject = createJavascriptInterpreter()
-
-        // WHEN
-        let js = """
-            var xhr = new XMLHttpRequest();
-            xhr.responseType = "json";
-            xhr.onload = function() {
-                native.sendEvent("onload", xhr.response);
-            }
-            xhr.onerror = function() {
-                native.sendEvent("onerror", xhr.response);
-            }
-            xhr.open("GET", "\(url)");
-            xhr.send();
-        """
-        subject.evaluateString(js: js, cb: nil)
-
-        let expectation = self.expectation(description: "js")
-        native.resetAndSetExpectation(expectation)
-
-        self.waitForExpectations(timeout: 10)
-
-        // THEN
-        XCTAssertEqual(native.receivedEvents.count, 1)
-        let event = native.receivedEvents[0]
-        XCTAssertEqual(event.name, "onerror")
-    }
-
-    func testXMLHTTPRequest_abort() {
-        // GIVEN
-        let url = "https://test.url/api/request"
-        let responseText = "{\"testKey\": \"testValue\"}"
-        stubJsonRequest(url: url, responseText: responseText)
-
-        let subject = createJavascriptInterpreter()
-
-        // WHEN
-        let js = """
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "\(url)");
-        xhr.send();
-        xhr.onload = function() {
-          console.log("sending native event xhrDone, payload:", xhr.response, "...");
-          native.sendEvent("xhrDone", xhr.response);
-        }
-        xhr.onabort = function() {
-          console.log("sending native event xhrAborted...");
-          native.sendEvent("xhrAborted");
-        }
-        xhr.abort();
-        """
-        subject.evaluateString(js: js, cb: nil)
-
-        let expectation = self.expectation(description: "js")
-        native.resetAndSetExpectation(expectation)
-
-        self.waitForExpectations(timeout: 10)
-
-        // THEN
-        XCTAssertEqual(native.receivedEvents.count, 1)
-        let event = native.receivedEvents[0]
-        XCTAssertEqual(event.name, "xhrAborted")
-    }
-
     class Person: Codable {
         var firstname: String?
         var lastname: String?
@@ -537,23 +397,21 @@ class JavascriptInterpreterTest: XCTestCase {
     func testPromise() {
         let js = JavascriptInterpreter()
         js.evaluateString(js: """
-
             function getDelayedMessage() {
-                return new Promise(function(resolve, reject) {
-                    setTimeout(function() {
-                        console.log("JS: MESSAGE RESOLVED");
-                        resolve({ firstname: "Tester", lastname: "Blester"});
-                    }, 2000);
-                }).then(function(response) {
-                    console.log("JS: then called1 " + response);
-                    return response;
-                }).then(function(response) {
-                    console.log("JS: then called2 " + response);
-                    return response;
-                });
+              return new Promise(function(resolve, reject) {
+                setTimeout(function() {
+                  console.log("JS: MESSAGE RESOLVED");
+                  resolve({ firstname: "Tester", lastname: "Blester"});
+                }, 2000);
+              }).then(function(response) {
+                console.log("JS: then called1 " + response);
+                return response;
+              }).then(function(response) {
+                console.log("JS: then called2 " + response);
+                return response;
+              });
             }
-
-            """)
+        """)
 
         let callbackExpectation = self.expectation(description: "callback")
 
@@ -570,15 +428,13 @@ class JavascriptInterpreterTest: XCTestCase {
     func testFastResolvePromise() {
         let js = JavascriptInterpreter()
         js.evaluateString(js: """
-
             function getDelayedMessage() {
-                return new Promise(function(resolve, reject) {
-                    console.log("JS: MESSAGE RESOLVED");
-                    resolve({ firstname: "Tester", lastname: "Blester"});
-                });
+              return new Promise(function(resolve, reject) {
+                console.log("JS: MESSAGE RESOLVED");
+                resolve({ firstname: "Tester", lastname: "Blester"});
+              });
             }
-
-            """)
+        """)
 
         let callbackExpectation = self.expectation(description: "callback")
 
@@ -596,17 +452,15 @@ class JavascriptInterpreterTest: XCTestCase {
     func testFailingPromise() {
         let js = JavascriptInterpreter()
         js.evaluateString(js: """
-
             function getDelayedMessage() {
-                return new Promise(function(resolve, reject) {
-                    setTimeout(function() {
-                        console.log("JS: MESSAGE REJECTED");
-                        reject({ code: 123, message: "Something went wrong."});
-                    }, 1000);
-                });
+              return new Promise(function(resolve, reject) {
+                setTimeout(function() {
+                  console.log("JS: MESSAGE REJECTED");
+                  reject({ code: 123, message: "Something went wrong."});
+                }, 1000);
+              });
             }
-
-            """)
+        """)
 
         let callbackExpectation = self.expectation(description: "callback")
 
@@ -630,7 +484,7 @@ class JavascriptInterpreterTest: XCTestCase {
         interpreter.evaluateString(js: """
             var testObject = {
               testMethod: function(vehicle, callback) {
-                return toUppercase(vehicle.brand)
+                return toUppercase(vehicle.brand);
               }
             };
         """)
@@ -651,16 +505,16 @@ class JavascriptInterpreterTest: XCTestCase {
             addScheduler = (scheduler) => {
               setTimeout( () => {
                 scheduler.update({"id": "123"}).then( (currentAdSchedule) => {
-                  scheduler.fullfillExpectationAfterResolve()
+                  scheduler.fullfillExpectationAfterResolve();
                 })
-              }, 1000)
-            }
-            """)
+              }, 1000);
+            };
+        """)
 
         let callbackExpectation = self.expectation(description: "callback")
         let scheduler = AdScheduler(interpreter: js, expectation: callbackExpectation)
 
-        js.call(object: nil, functionName: "addScheduler", arguments: [scheduler], completion: {_ in })
+        js.call(object: nil, functionName: "addScheduler", arguments: [scheduler], completion: { _ in })
 
         self.waitForExpectations(timeout: 10)
     }
@@ -706,78 +560,5 @@ class JavascriptInterpreterTest: XCTestCase {
         }
 
         self.waitForExpectations(timeout: 1)
-    }
-
-    // This test ensures that the JsContext instance is not retained after destroying the
-    // JavascriptInterpreter. This can be the for example the case if a JSValue instance is stored
-    // in an exported object (like XMLHttpRequest) and not properly nulled.
-    //
-    // See also the "Managing Memory for Exported Objects" section in:
-    // https://developer.apple.com/documentation/javascriptcore/jsvirtualmachine
-    //
-    // To provoke this behavior, you can try to comment out the line "self.onload = nil;" in
-    // XMLHttpRequest:destroy and observe that the JSContext instance is still referenced
-
-    /* Failing too often. Temporarily disabled.
-    func testDestroy() {
-        weak var weakJsInterpreter: JavascriptInterpreter? = nil
-        weak var weakJsContext: JSContext? = nil
-        
-        autoreleasepool {
-            var jsInterpreter: JavascriptInterpreter? = JavascriptInterpreter()
-            weakJsInterpreter = jsInterpreter
-            weakJsContext = jsInterpreter!.jsContext
-            let jsInterpreterStartedExpectation = self.expectation(description: "startJsInterpreter")
-
-            let js = """
-                var xhr = new XMLHttpRequest();
-                xhr.onload = function() {}
-            """
-            
-            jsInterpreter?.evaluateString(js: js) { _ in
-                jsInterpreter = nil
-                
-                jsInterpreterStartedExpectation.fulfill()
-            }
-            
-            self.wait(for: [jsInterpreterStartedExpectation], timeout: 20)
-        }
-        
-        if weakJsInterpreter != nil {
-            Logger.warning("JavascriptInterpreter retain count AFTER: \(CFGetRetainCount(weakJsInterpreter))")
-        }
-        
-        if weakJsContext != nil {
-            Logger.warning("JsContext retain count AFTER: \(CFGetRetainCount(weakJsContext))")
-        }
-        
-        XCTAssertNil(weakJsInterpreter)
-        XCTAssertNil(weakJsContext)
-    }
-    */
-
-    // MARK: Private methods
-
-    private func stubJsonRequest(url: String, responseText: String) {
-        HTTPStubs.stubRequests(
-            passingTest: { (request) -> Bool in
-                guard let host = request.url?.host, let path = request.url?.path else {
-                    return false
-                }
-
-                if url != "https://\(host)\(path)" {
-                    return false  // not stubbed
-                }
-
-                return true
-            },
-            withStubResponse: { [weak self] (_) -> HTTPStubsResponse in
-                let response = responseText
-                self?.stubbedRequests.append((url: url, response: response))
-                return HTTPStubsResponse(data: response.data(using: String.Encoding.utf8)!,
-                                           statusCode: 200,
-                                           headers: ["content-type": "application/json"])
-            }
-        )
     }
 }

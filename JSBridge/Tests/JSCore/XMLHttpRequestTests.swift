@@ -1,26 +1,215 @@
 import XCTest
 import JavaScriptCore
-@testable import OasisJSBridge
 import OHHTTPStubs
-import OHHTTPStubsSwift
+@testable import OasisJSBridge
 
 final class XMLHttpRequestTests: XCTestCase {
     private let timeout: TimeInterval = 1
     private let brokenURL = "h://& ?" // invalid both for browser and for Foundation.URL
 
     private var interpreter: JavascriptInterpreter!
-    private var eventLogger: JSEventLogger!
+    private var native: Native!
 
     override func setUpWithError() throws {
         interpreter = JavascriptInterpreter()
-        eventLogger = JSEventLogger()
+        native = Native()
 
-        interpreter.jsContext.setObject(eventLogger, forKeyedSubscript: "native" as NSString)
+        interpreter.jsContext.setObject(native, forKeyedSubscript: "native" as NSString)
     }
 
     override func tearDownWithError() throws {
         HTTPStubs.removeAllStubs()
     }
+}
+
+// MARK: - General tests
+
+extension XMLHttpRequestTests {
+    func testText() {
+        // GIVEN
+        let url = "https://test.url/api/request"
+        let responseText = "testValue"
+        stubRequests(url: url, jsonResponse: responseText)
+
+        let expectedPayloads: [NSString] = [
+            responseText as NSString,
+            responseText as NSString
+        ]
+
+        // WHEN
+        let js = """
+        var xhr = new XMLHttpRequest();
+        xhr.responseType = "text";
+        xhr.onload = function() {
+          native.sendEvent("response", xhr.response);
+          native.sendEvent("responseText", xhr.responseText);
+        }
+        xhr.open("GET", "\(url)");
+        xhr.send();
+        """
+        interpreter.evaluateString(js: js)
+
+        let expectation = self.expectation(description: "js")
+        expectation.expectedFulfillmentCount = expectedPayloads.count
+        native.resetAndSetExpectation(expectation)
+
+        waitForExpectations(timeout: 10)
+
+        // THEN
+        XCTAssertEqual(native.receivedEvents.count, expectedPayloads.count)
+        for (received, expected) in zip(native.receivedEvents.map(\.payload), expectedPayloads) {
+            XCTAssertEqual(received as? NSString, expected)
+        }
+    }
+
+    func testJson() {
+        // GIVEN
+        let url = "https://test.url/api/request"
+        let responseText = "{\"testKey\": \"testValue\"}"
+        stubRequests(url: url, jsonResponse: responseText)
+
+        let expectedPayloads: [NSDictionary?] = [
+            ["testKey": "testValue"],
+            nil
+        ]
+
+        // WHEN
+        let js = """
+        var xhr = new XMLHttpRequest();
+        xhr.responseType = "json";
+        xhr.onload = function() {
+          native.sendEvent("response", xhr.response);
+          native.sendEvent("responseText", xhr.responseText);
+        }
+        xhr.open("GET", "\(url)");
+        xhr.send();
+        """
+        interpreter.evaluateString(js: js)
+
+        let expectation = self.expectation(description: "js")
+        expectation.expectedFulfillmentCount = expectedPayloads.count
+        native.resetAndSetExpectation(expectation)
+
+        waitForExpectations(timeout: 1)
+
+        // THEN
+        XCTAssertEqual(native.receivedEvents.count, expectedPayloads.count)
+        for (received, expected) in zip(native.receivedEvents.map(\.payload), expectedPayloads) {
+            XCTAssertEqual(received as? NSDictionary, expected)
+        }
+    }
+
+    func test_invalidURL() {
+        // GIVEN
+        let url = "https://test.url/api/request?code=${CODE}" // curly brackets are not allowed in URLs
+
+        // WHEN
+        let js = """
+        var xhr = new XMLHttpRequest();
+        xhr.responseType = "json";
+        xhr.onload = function() {
+          native.sendEvent("onload", xhr.response);
+        }
+        xhr.onerror = function() {
+          native.sendEvent("onerror", xhr.response);
+        }
+        xhr.open("GET", "\(url)");
+        xhr.send();
+        """
+        interpreter.evaluateString(js: js)
+
+        let expectation = self.expectation(description: "js")
+        native.resetAndSetExpectation(expectation)
+
+        waitForExpectations(timeout: 10)
+
+        // THEN
+        XCTAssertEqual(native.receivedEvents.count, 1)
+        let event = native.receivedEvents[0]
+        XCTAssertEqual(event.name, "onerror")
+    }
+
+    func test_abort() {
+        // GIVEN
+        let url = "https://test.url/api/request"
+        let responseText = "{\"testKey\": \"testValue\"}"
+        stubRequests(url: url, jsonResponse: responseText)
+
+        // WHEN
+        let js = """
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "\(url)");
+        xhr.send();
+        xhr.onload = function() {
+          console.log("sending native event xhrDone, payload:", xhr.response, "...");
+          native.sendEvent("xhrDone", xhr.response);
+        }
+        xhr.onabort = function() {
+          console.log("sending native event xhrAborted...");
+          native.sendEvent("xhrAborted");
+        }
+        xhr.abort();
+        """
+        interpreter.evaluateString(js: js)
+
+        let expectation = self.expectation(description: "js")
+        native.resetAndSetExpectation(expectation)
+
+        waitForExpectations(timeout: 10)
+
+        // THEN
+        XCTAssertEqual(native.receivedEvents.count, 1)
+        let event = native.receivedEvents[0]
+        XCTAssertEqual(event.name, "xhrAborted")
+    }
+
+    // This test ensures that the JsContext instance is not retained after destroying the
+    // JavascriptInterpreter. This can be the for example the case if a JSValue instance is stored
+    // in an exported object (like XMLHttpRequest) and not properly nulled.
+    //
+    // See also the "Managing Memory for Exported Objects" section in:
+    // https://developer.apple.com/documentation/javascriptcore/jsvirtualmachine
+    //
+    // To provoke this behavior, you can try to comment out the line "self.onload = nil;" in
+    // XMLHttpRequest:destroy and observe that the JSContext instance is still referenced
+
+    /* Failing too often. Temporarily disabled.
+    func testDestroy() {
+        weak var weakJsInterpreter: JavascriptInterpreter? = nil
+        weak var weakJsContext: JSContext? = nil
+
+        autoreleasepool {
+            var jsInterpreter: JavascriptInterpreter? = JavascriptInterpreter()
+            weakJsInterpreter = jsInterpreter
+            weakJsContext = jsInterpreter!.jsContext
+            let jsInterpreterStartedExpectation = self.expectation(description: "startJsInterpreter")
+
+            let js = """
+                var xhr = new XMLHttpRequest();
+                xhr.onload = function() {}
+            """
+
+            jsInterpreter?.evaluateString(js: js) { _ in
+                jsInterpreter = nil
+
+                jsInterpreterStartedExpectation.fulfill()
+            }
+
+            self.wait(for: [jsInterpreterStartedExpectation], timeout: 20)
+        }
+
+        if weakJsInterpreter != nil {
+            Logger.warning("JavascriptInterpreter retain count AFTER: \(CFGetRetainCount(weakJsInterpreter))")
+        }
+
+        if weakJsContext != nil {
+            Logger.warning("JsContext retain count AFTER: \(CFGetRetainCount(weakJsContext))")
+        }
+
+        XCTAssertNil(weakJsInterpreter)
+        XCTAssertNil(weakJsContext)
+    }
+    */
 }
 
 // MARK: - Event Tests
@@ -62,7 +251,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -75,7 +264,7 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_properties_open() {
@@ -89,7 +278,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -101,7 +290,7 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_properties_open_brokenURL() {
@@ -115,7 +304,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -127,13 +316,13 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_properties_openAbort() {
         // GIVEN
         let url = "https://test.url/api/request"
-        HTTPStubs.stubRequests(passingTest: isAbsoluteURLString(url)) { _ in
+        stubRequests(url: url) {
             HTTPStubsResponse(data: Data(), statusCode: 200, headers: nil)
         }
 
@@ -146,7 +335,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -160,13 +349,13 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_properties_openSend() {
         // GIVEN
         let url = "https://test.url/api/request"
-        HTTPStubs.stubRequests(passingTest: isAbsoluteURLString(url)) { _ in
+        stubRequests(url: url) {
             HTTPStubsResponse(data: Data(), statusCode: 200, headers: nil)
         }
 
@@ -183,7 +372,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -196,7 +385,7 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_properties_openSend_brokenURL() {
@@ -212,7 +401,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -225,13 +414,13 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_properties_openSendAbort() {
         // GIVEN
         let url = "https://test.url/api/request"
-        HTTPStubs.stubRequests(passingTest: isAbsoluteURLString(url)) { _ in
+        stubRequests(url: url) {
             HTTPStubsResponse(data: Data(), statusCode: 200, headers: nil)
         }
 
@@ -247,7 +436,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -262,13 +451,13 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_properties_openSendError() {
         // GIVEN
         let url = "https://test.url/api/request"
-        HTTPStubs.stubRequests(passingTest: isAbsoluteURLString(url)) { _ in
+        stubRequests(url: url) {
             HTTPStubsResponse(error: URLError(.resourceUnavailable))
         }
 
@@ -283,7 +472,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -296,7 +485,7 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_properties_send() {
@@ -309,7 +498,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -322,7 +511,7 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     // MARK: - Event listeners
@@ -337,7 +526,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -350,7 +539,7 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_listeners_open() {
@@ -364,7 +553,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -376,7 +565,7 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_listeners_open_brokenURL() {
@@ -390,7 +579,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -402,13 +591,13 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_listeners_openAbort() {
         // GIVEN
         let url = "https://test.url/api/request"
-        HTTPStubs.stubRequests(passingTest: isAbsoluteURLString(url)) { _ in
+        stubRequests(url: url) {
             HTTPStubsResponse(data: Data(), statusCode: 200, headers: nil)
         }
 
@@ -421,7 +610,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -435,13 +624,13 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_listeners_openSend() {
         // GIVEN
         let url = "https://test.url/api/request"
-        HTTPStubs.stubRequests(passingTest: isAbsoluteURLString(url)) { _ in
+        stubRequests(url: url) {
             HTTPStubsResponse(data: Data(), statusCode: 200, headers: nil)
         }
 
@@ -460,7 +649,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -473,7 +662,7 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_listeners_openSend_brokenURL() {
@@ -490,7 +679,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -503,13 +692,13 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_listeners_openSendAbort() {
         // GIVEN
         let url = "https://test.url/api/request"
-        HTTPStubs.stubRequests(passingTest: isAbsoluteURLString(url)) { _ in
+        stubRequests(url: url) {
             HTTPStubsResponse(data: Data(), statusCode: 200, headers: nil)
         }
 
@@ -526,7 +715,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -541,13 +730,13 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_listeners_openSendError() {
         // GIVEN
         let url = "https://test.url/api/request"
-        HTTPStubs.stubRequests(passingTest: isAbsoluteURLString(url)) { _ in
+        stubRequests(url: url) {
             HTTPStubsResponse(error: URLError(.resourceUnavailable))
         }
 
@@ -563,7 +752,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -576,7 +765,7 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
 
     func testEvents_listeners_send() {
@@ -589,7 +778,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
         expectation.assertForOverFulfill = false
-        eventLogger.configure(expectation: expectation)
+        native.resetAndSetExpectation(expectation)
 
         let script = """
         \(eventHandler)
@@ -602,7 +791,6 @@ extension XMLHttpRequestTests {
         wait(for: [expectation], timeout: timeout)
 
         // THEN
-        XCTAssertEqual(eventLogger.events.map(\.name), expectedEvents)
+        XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
     }
-
 }

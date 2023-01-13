@@ -15,7 +15,13 @@ Pod::Spec.new do |s|
   s.static_framework = false
   s.source_files = 'JSBridge/Classes/**/*'
   s.resources = 'JSBridge/Assets/*.js'
-  
+
+  s.test_spec 'Tests' do |s|
+    s.source_files = 'JSBridge/Tests/**/*.swift'
+    s.resources = 'JSBridge/Tests/Resources/*.js'
+    s.dependency 'OHHTTPStubs/Swift'
+  end
+
   s.xcconfig = {
     "DEFINES_MODULE" => "YES"
   }

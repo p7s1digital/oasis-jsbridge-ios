@@ -1,26 +1,8 @@
 PODS:
   - OasisJSBridge (0.4.5)
-  - OHHTTPStubs/Core (9.1.0)
-  - OHHTTPStubs/Default (9.1.0):
-    - OHHTTPStubs/Core
-    - OHHTTPStubs/JSON
-    - OHHTTPStubs/NSURLSession
-    - OHHTTPStubs/OHPathHelpers
-  - OHHTTPStubs/JSON (9.1.0):
-    - OHHTTPStubs/Core
-  - OHHTTPStubs/NSURLSession (9.1.0):
-    - OHHTTPStubs/Core
-  - OHHTTPStubs/OHPathHelpers (9.1.0)
-  - OHHTTPStubs/Swift (9.1.0):
-    - OHHTTPStubs/Default
 
 DEPENDENCIES:
   - OasisJSBridge (from `../`)
-  - OHHTTPStubs/Swift
-
-SPEC REPOS:
-  trunk:
-    - OHHTTPStubs
 
 EXTERNAL SOURCES:
   OasisJSBridge:
@@ -28,8 +10,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   OasisJSBridge: 1acded76d40d9c688c7fe16c03710045c68be297
-  OHHTTPStubs: 90eac6d8f2c18317baeca36698523dc67c513831
 
-PODFILE CHECKSUM: f135e1301cb3257f53e305c05f78549b56904aa6
+PODFILE CHECKSUM: 0031400f2336acea445d73dd498e771094551dd8
 
 COCOAPODS: 1.11.3

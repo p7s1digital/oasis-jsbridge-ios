@@ -25,8 +25,10 @@ let package = Package(
                 "OasisJSBridge",
                 .product(name: "OHHTTPStubsSwift", package: "OHHTTPStubs"),
             ],
-            path: "JSBridge",
-            sources: ["Tests"]
+            path: "JSBridge/Tests",
+            resources: [
+                .process("Resources")
+            ]
         )
     ]
 )
