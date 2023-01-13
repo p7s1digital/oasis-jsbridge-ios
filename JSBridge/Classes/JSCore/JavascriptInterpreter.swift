@@ -67,7 +67,6 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         setupExceptionHandling()
         setupGlobal()
         setupConsole()
-        setupPromise()
         setupNativePromise()
         setupStringify()
         setupTimeoutAndInterval()
@@ -350,21 +349,13 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
 
     func runOnJSQueue(synchronous: Bool = false, _ block: @escaping () -> Void) {
-
         if isRunningOnJSQueue() {
             block()
-            runPromiseQueue()
         } else {
             if synchronous {
-                jsQueue.sync { [weak self] in
-                    block()
-                    self?.runPromiseQueue()
-                }
+                jsQueue.sync(execute: block)
             } else {
-                jsQueue.async { [weak self] in
-                    block()
-                    self?.runPromiseQueue()
-                }
+                jsQueue.async(execute: block)
             }
         }
     }
@@ -437,18 +428,6 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     // MARK: - Promise
 
-    static let needsPromisePolyfill = ProcessInfo().operatingSystemVersion.majorVersion < 10
-
-    private func setupPromise() {
-
-        guard JavascriptInterpreter.needsPromisePolyfill else { return }
-
-        // on iOS 8 a Promise is existing, but doesn't work due to missing event-loop => we don't support this case
-        // on iOS 9 Promise is non-existing
-        // since iOS 10 Promise are working on JSCore
-        evaluateLocalFile(bundle: jsBridgeBundle, filename: "promise.js", cb: {})
-    }
-
     private func setupNativePromise() {
         evaluateString(js: """
             jsBridgeCreatePromiseWrapper = () => {
@@ -464,13 +443,6 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     private func setupStringify() {
         evaluateLocalFile(bundle: jsBridgeBundle, filename: "customStringify.js", cb: {})
-    }
-
-    private func runPromiseQueue() {
-
-        if JavascriptInterpreter.needsPromisePolyfill {
-            jsContext.evaluateScript("Promise.runQueue();")
-        }
     }
 
     // MARK: - Local Storage
@@ -569,8 +541,6 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
                 } else {
                     strongSelf.pendingTimeouts.removeAll(where: { $0.id == timeout.id })
                 }
-
-                strongSelf.runPromiseQueue()
             }
 
             timeout.block = { [weak self] in
