@@ -363,12 +363,9 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
 
     private func setupExceptionHandling() {
-        // Catch exceptions
         jsContext.exceptionHandler = { [weak self] context, exception in
-            
             self?.lastException = exception
-            
-            Logger.error("******")
+
             if let stacktrace = exception?.objectForKeyedSubscript("stack") {
                 Logger.error("JS ERROR: \(exception!)\n\(stacktrace)")
             } else if let exception = exception {
@@ -376,7 +373,6 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             } else {
                 Logger.error("UNKNOWN JS ERROR")
             }
-            Logger.error("******")
         }
     }
 
