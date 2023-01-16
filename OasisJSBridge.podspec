@@ -1,4 +1,3 @@
-
 Pod::Spec.new do |s|
   s.name             = 'OasisJSBridge'
   s.version          = '0.4.5'
@@ -14,7 +13,6 @@ Pod::Spec.new do |s|
   s.swift_version = '5.0'
   s.static_framework = false
   s.source_files = 'JSBridge/Classes/**/*'
-  s.resources = 'JSBridge/Assets/*.js'
 
   s.test_spec 'Tests' do |s|
     s.source_files = 'JSBridge/Tests/**/*.swift'
@@ -28,4 +26,3 @@ Pod::Spec.new do |s|
 
   s.frameworks = 'UIKit', 'JavaScriptCore'
 end
-

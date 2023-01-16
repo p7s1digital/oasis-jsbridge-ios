@@ -13,11 +13,7 @@ let package = Package(
     targets: [
         .target(
             name: "OasisJSBridge",
-            path: "JSBridge",
-            sources: ["Classes"],
-            resources: [
-                .process("Assets"),
-            ]
+            path: "JSBridge/Classes"
         ),
         .testTarget(
             name: "OasisJSBridgeTests",

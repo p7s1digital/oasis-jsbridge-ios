@@ -28,7 +28,6 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     private var pendingTimeouts = [Timeout]()
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
     private var webSocketInstances = NSPointerArray.weakObjects()
-    private let jsBridgeBundle: Bundle!
     private var lastException: JSValue?
     
     enum JSError: Error {
@@ -52,14 +51,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     // MARK: - Initializer
 
     public init() {
-
         jsContext = JSContext()!
-
-        #if SWIFT_PACKAGE
-        jsBridgeBundle = Bundle.module
-        #else
-        jsBridgeBundle = Bundle(for: JavascriptInterpreter.self)
-        #endif
 
         jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
         jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
@@ -389,11 +381,10 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
 
     private func setupGlobal() {
-        let str = """
+        jsContext.evaluateScript("""
             var global = this;
             var window = this;
-        """
-        jsContext.evaluateScript(str)
+        """)
     }
 
     private func setupConsole() {
@@ -438,11 +429,27 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
               })
               return wrapper
             }
-            """)
+        """)
     }
 
     private func setupStringify() {
-        evaluateLocalFile(bundle: jsBridgeBundle, filename: "customStringify.js", cb: {})
+        evaluateString(js: """
+            function __jsBridge__stringify(err) {
+              var replaceErrors = function (_key, value) {
+                if (value instanceof Error) {
+                  // Replace Error instance into plain JS objects using Error own properties
+                  return Object.getOwnPropertyNames(value).reduce(function (acc, key) {
+                    acc[key] = value[key];
+                    return acc;
+                  }, {});
+                }
+
+                return value;
+              };
+
+              return JSON.stringify(err, replaceErrors);
+            }
+        """)
     }
 
     // MARK: - Local Storage
