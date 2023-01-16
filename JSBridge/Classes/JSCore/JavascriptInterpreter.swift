@@ -28,6 +28,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     private var pendingTimeouts = [Timeout]()
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
     private var webSocketInstances = NSPointerArray.weakObjects()
+    private let localStorage = LocalStorage()
     private var lastException: JSValue?
     
     enum JSError: Error {
@@ -65,7 +66,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         setupXMLHttpRequest()
         setupWebSocket()
         setupLoadURL()
-        setupLocalStorage()
+        setupStorage()
     }
 
     deinit {
@@ -416,7 +417,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     // MARK: - Promise
 
     private func setupNativePromise() {
-        evaluateString(js: """
+        jsContext.evaluateScript("""
             jsBridgeCreatePromiseWrapper = () => {
               var wrapper = {}
               wrapper.promise = new Promise((resolve, reject) => {
@@ -429,7 +430,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
 
     private func setupStringify() {
-        evaluateString(js: """
+        jsContext.evaluateScript("""
             function __jsBridge__stringify(err) {
               var replaceErrors = function (_key, value) {
                 if (value instanceof Error) {
@@ -448,60 +449,11 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         """)
     }
 
-    // MARK: - Local Storage
+    // MARK: - Storage
 
-    func setupLocalStorage() {
-
-        let userDefaultsPrefix = "jsBridge"
-
-        let setItem: @convention(block) (String, String) -> Void = { key, value in
-            UserDefaults.standard.set(value, forKey: "\(userDefaultsPrefix)\(key)")
-            UserDefaults.standard.synchronize()
-        }
-        jsContext.setObject(setItem, forKeyedSubscript: "jsBridgeLocalStorageSetItem" as NSString)
-
-        let getItem: @convention(block) (String) -> String? = { key in
-            return UserDefaults.standard.value(forKey: "\(userDefaultsPrefix)\(key)") as? String
-        }
-        jsContext.setObject(getItem, forKeyedSubscript: "jsBridgeLocalStorageGetItem" as NSString)
-
-        let removeItem: @convention(block) (String) -> Void = { key in
-            UserDefaults.standard.removeObject(forKey: "\(userDefaultsPrefix)\(key)")
-            UserDefaults.standard.synchronize()
-        }
-        jsContext.setObject(removeItem, forKeyedSubscript: "jsBridgeLocalStorageRemoveItem" as NSString)
-
-        let clear: @convention(block) () -> Void = {
-            let keys = UserDefaults.standard.dictionaryRepresentation().keys.filter { $0.hasPrefix(userDefaultsPrefix) }
-            for key in keys {
-                UserDefaults.standard.removeObject(forKey: key)
-            }
-            UserDefaults.standard.synchronize()
-        }
-        jsContext.setObject(clear, forKeyedSubscript: "jsBridgeLocalStorageClear" as NSString)
-
-        evaluateString(js: """
-            localStorage = {
-                setItem: (key, value) => {
-                    let json = JSON.stringify(value)
-                    jsBridgeLocalStorageSetItem(key, json)
-                },
-                getItem: (key) => {
-                    let json = jsBridgeLocalStorageGetItem(key)
-                    if (json == undefined) {
-                        return json
-                    }
-                    return JSON.parse(json)
-                },
-                removeItem: (key) => {
-                    return jsBridgeLocalStorageRemoveItem(key)
-                },
-                clear: () => {
-                    jsBridgeLocalStorageClear()
-                }
-            }
-            window.localStorage = localStorage
-            """)
+    func setupStorage() {
+        jsContext.setObject(localStorage, forKeyedSubscript: "localStorage" as NSString)
+        jsContext.setObject(sessionStorage, forKeyedSubscript: "sessionStorage" as NSString)
     }
 
     // MARK: - Timeout and Interval
