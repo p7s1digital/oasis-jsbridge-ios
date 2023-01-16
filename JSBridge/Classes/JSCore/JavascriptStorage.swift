@@ -51,3 +51,29 @@ import JavaScriptCore
             .forEach(userDefaults.removeObject(forKey:))
     }
 }
+
+/// `sessionStorage` implementation for JavaScriptCore.
+/// - SeeAlso: https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage
+@objc class SessionStorage: NSObject, JavascriptStorageExport {
+    // MARK: Private properties
+
+    private var storage = [String: String]()
+
+    // MARK: JavascriptStorageExport
+
+    func setItem(_ key: String, _ value: String) {
+        storage[key] = value
+    }
+
+    func getItem(_ key: String) -> String? {
+        storage[key]
+    }
+
+    func removeItem(_ key: String) {
+        storage.removeValue(forKey: key)
+    }
+
+    func clear() {
+        storage.removeAll()
+    }
+}

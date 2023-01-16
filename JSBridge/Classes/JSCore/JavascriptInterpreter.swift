@@ -29,6 +29,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
     private var webSocketInstances = NSPointerArray.weakObjects()
     private let localStorage = LocalStorage()
+    private let sessionStorage = SessionStorage()
     private var lastException: JSValue?
     
     enum JSError: Error {
