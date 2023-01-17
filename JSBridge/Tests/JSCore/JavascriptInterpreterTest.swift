@@ -42,7 +42,7 @@ import OHHTTPStubs
     func update(_ payload: Any?) -> JSValue {
         let promiseWrapper = NativePromise(interpreter: interpreter)
 
-        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 1.0) {
+        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + .milliseconds(250)) {
             promiseWrapper.resolve(arguments: [["native" : "ios"]])
         }
 
@@ -95,7 +95,7 @@ class JavascriptInterpreterTest: XCTestCase {
             expectation.fulfill()
         }
 
-        self.waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 1)
     }
 
     func testEvaluateLocalFile() {
@@ -112,7 +112,7 @@ class JavascriptInterpreterTest: XCTestCase {
         // sendEvent("localFileEvent", {isHere: true});
         subject.evaluateLocalFile(bundle: Bundle.module, filename: "test.js")
 
-        self.waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 1)
 
         // THEN
         XCTAssertEqual(native.receivedEvents.count, 1)
@@ -145,7 +145,7 @@ class JavascriptInterpreterTest: XCTestCase {
         }
 
         // THEN
-        self.waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 1)
     }
 
     func testSetObject() {
@@ -171,7 +171,7 @@ class JavascriptInterpreterTest: XCTestCase {
         }
 
         // THEN
-        self.waitForExpectations(timeout: 3)
+        waitForExpectations(timeout: 1)
     }
 
     func testIsFunction() {
@@ -213,7 +213,7 @@ class JavascriptInterpreterTest: XCTestCase {
             }
         }
 
-        self.waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 1)
     }
 
     class Person: Codable {
@@ -235,7 +235,7 @@ class JavascriptInterpreterTest: XCTestCase {
                     lastname: lastname,
                   }];
                   callback(persons, null);
-                }, 3000);
+                }, 250);
               }
             };
         """)
@@ -258,7 +258,7 @@ class JavascriptInterpreterTest: XCTestCase {
 
         })
 
-        self.waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 1)
     }
 
     func testPromise() {
@@ -269,7 +269,7 @@ class JavascriptInterpreterTest: XCTestCase {
                 setTimeout(function() {
                   console.log("JS: MESSAGE RESOLVED");
                   resolve({ firstname: "Tester", lastname: "Blester"});
-                }, 2000);
+                }, 250);
               }).then(function(response) {
                 console.log("JS: then called1 " + response);
                 return response;
@@ -290,7 +290,7 @@ class JavascriptInterpreterTest: XCTestCase {
             XCTAssert(false)
         }
 
-        self.waitForExpectations(timeout: 5)
+        waitForExpectations(timeout: 1)
     }
     func testFastResolvePromise() {
         let js = JavascriptInterpreter()
@@ -313,7 +313,7 @@ class JavascriptInterpreterTest: XCTestCase {
             XCTAssert(false)
         }
 
-        self.waitForExpectations(timeout: 5)
+        waitForExpectations(timeout: 1)
     }
 
     func testFailingPromise() {
@@ -324,7 +324,7 @@ class JavascriptInterpreterTest: XCTestCase {
                 setTimeout(function() {
                   console.log("JS: MESSAGE REJECTED");
                   reject({ code: 123, message: "Something went wrong."});
-                }, 1000);
+                }, 250);
               });
             }
         """)
@@ -339,7 +339,7 @@ class JavascriptInterpreterTest: XCTestCase {
             callbackExpectation.fulfill()
         }
 
-        self.waitForExpectations(timeout: 5)
+        waitForExpectations(timeout: 1)
     }
 
     func testExample() {
@@ -363,7 +363,7 @@ class JavascriptInterpreterTest: XCTestCase {
             expectation.fulfill()
         })
 
-        self.waitForExpectations(timeout: 3)
+        waitForExpectations(timeout: 1)
     }
 
     func testNativePromise() {
@@ -374,7 +374,7 @@ class JavascriptInterpreterTest: XCTestCase {
                 scheduler.update({"id": "123"}).then( (currentAdSchedule) => {
                   scheduler.fullfillExpectationAfterResolve();
                 })
-              }, 1000);
+              }, 250);
             };
         """)
 
@@ -383,6 +383,6 @@ class JavascriptInterpreterTest: XCTestCase {
 
         js.call(object: nil, functionName: "addScheduler", arguments: [scheduler], completion: { _ in })
 
-        self.waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 1)
     }
 }

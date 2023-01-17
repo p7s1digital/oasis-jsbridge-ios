@@ -53,7 +53,7 @@ extension XMLHttpRequestTests {
         expectation.expectedFulfillmentCount = expectedPayloads.count
         native.resetAndSetExpectation(expectation)
 
-        waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 1)
 
         // THEN
         XCTAssertEqual(native.receivedEvents.count, expectedPayloads.count)
@@ -121,7 +121,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "js")
         native.resetAndSetExpectation(expectation)
 
-        waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 1)
 
         // THEN
         XCTAssertEqual(native.receivedEvents.count, 1)
@@ -155,7 +155,7 @@ extension XMLHttpRequestTests {
         let expectation = self.expectation(description: "js")
         native.resetAndSetExpectation(expectation)
 
-        waitForExpectations(timeout: 10)
+        waitForExpectations(timeout: 1)
 
         // THEN
         XCTAssertEqual(native.receivedEvents.count, 1)
