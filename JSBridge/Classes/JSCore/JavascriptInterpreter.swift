@@ -146,6 +146,22 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             }
         }
     }
+
+    @discardableResult
+    public func evaluateScript(_ script: String) throws -> JSValue? {
+        var result: JSValue?
+
+        runOnJSQueue(synchronous: true) { [self] in
+            lastException = nil
+            result = jsContext.evaluateScript(script)
+        }
+
+        if let lastException {
+            throw JSBridgeError(type: .jsEvaluationFailed, message: lastException.toString())
+        }
+
+        return result
+    }
     
     // MARK: - calling JS functions
 
