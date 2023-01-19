@@ -68,7 +68,6 @@ import JavaScriptCore
     // MARK: Private properties
 
     private let jsQueue: DispatchQueue
-    private weak var context: JSContext?
     private let urlSession: URLSession
     private let logger: ((String) -> Void)?
     private var eventListeners = [XMLHttpRequestEvent.EventType: JSValue]()
@@ -80,10 +79,9 @@ import JavaScriptCore
 
     // MARK: Init
 
-    init(urlSession: URLSession, jsQueue: DispatchQueue, context: JSContext, logger: ((String) -> Void)?) {
+    init(urlSession: URLSession, jsQueue: DispatchQueue, logger: ((String) -> Void)?) {
         self.urlSession = urlSession
         self.jsQueue = jsQueue
-        self.context = context
         self.logger = logger
 
         super.init()
@@ -99,7 +97,7 @@ import JavaScriptCore
     ) {
         jsQueue.async {
             let constructor: @convention(block) () -> XMLHttpRequest = {
-                XMLHttpRequest(urlSession: urlSession, jsQueue: jsQueue, context: context, logger: logger)
+                XMLHttpRequest(urlSession: urlSession, jsQueue: jsQueue, logger: logger)
             }
             context.setObject(constructor, forKeyedSubscript: NSString(string: "XMLHttpRequest"))
 
@@ -229,7 +227,7 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
         // Skip creating event payload if there are no callbacks for given eventType
         guard property != nil || listener != nil else { return }
 
-        let eventPayload = XMLHttpRequestEvent(type: type, value: self, context: context)
+        let eventPayload = XMLHttpRequestEvent(type: type, value: self)
         property?.call(withArguments: [eventPayload])
         listener?.call(withArguments: [eventPayload])
     }

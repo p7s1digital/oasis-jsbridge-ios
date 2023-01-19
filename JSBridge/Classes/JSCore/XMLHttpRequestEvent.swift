@@ -4,9 +4,9 @@ import JavaScriptCore
 @objc protocol DOMEvent: JSExport {
 
     var type: String { get }
-    var target: JSValue? { get }
-    var srcElement: JSValue? { get }
-    var currentTarget: JSValue? { get }
+    var target: XMLHttpRequestJSExport? { get }
+    var srcElement: XMLHttpRequestJSExport? { get }
+    var currentTarget: XMLHttpRequestJSExport? { get }
     var composedPath: [Any] { get }
 
     var eventPhase: Int { get }
@@ -44,17 +44,15 @@ class XMLHttpRequestEvent: NSObject {
     }
 
     var type: String
-    var currentTarget: JSValue?
-    var target: JSValue?
-    var srcElement: JSValue?
+    var currentTarget: XMLHttpRequestJSExport?
+    var target: XMLHttpRequestJSExport?
+    var srcElement: XMLHttpRequestJSExport?
 
-    init(type: XMLHttpRequestEvent.EventType, value: XMLHttpRequestJSExport, context: JSContext?) {
-        let target = (context ?? JSContext.current()).flatMap { JSValue(object: value, in: $0) }
-
+    init(type: XMLHttpRequestEvent.EventType, value: XMLHttpRequestJSExport) {
         self.type = type.rawValue
-        self.target = target
-        currentTarget = target
-        srcElement = target
+        self.target = value
+        currentTarget = value
+        srcElement = value
     }
 
 }
