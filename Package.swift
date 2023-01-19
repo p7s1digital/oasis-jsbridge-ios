@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "OasisJSBridge",
-    platforms: [.iOS(.v13), .tvOS(.v13)],
+    platforms: [.iOS(.v12), .tvOS(.v12)],
     products: [
         .library(name: "OasisJSBridge", targets: ["OasisJSBridge"])
     ],

@@ -53,20 +53,25 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         setupStringify()
         setupTimeoutAndInterval()
         setupXMLHttpRequest()
-        setupWebSocket()
+        if #available(iOS 13, tvOS 13, *) {
+            setupWebSocket()
+        }
         setupLoadURL()
         setupStorage()
     }
 
     deinit {
         Logger.debug("JSCoreJavascriptInterpreter - destroy()")
-        for instance in xmlHttpRequestInstances.allObjects {
-            (instance as? XMLHttpRequest)?.clearJSValues()
-        }
-        urlSession.reset { }
+
+        xmlHttpRequestInstances.allObjects.forEach({ ($0 as? XMLHttpRequest)?.clearJSValues() })
         xmlHttpRequestInstances = NSPointerArray.weakObjects()
-        webSocketInstances.allObjects.forEach({ ($0 as? WebSocket)?.clear() })
-        webSocketInstances = NSPointerArray.weakObjects()
+        urlSession.reset { }
+
+        if #available(iOS 13, tvOS 13, *) {
+            webSocketInstances.allObjects.forEach({ ($0 as? WebSocket)?.clear() })
+            webSocketInstances = NSPointerArray.weakObjects()
+        }
+
         timeouts.clearAll()
         jsContext = nil
     }
@@ -501,6 +506,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         })
     }
     
+    @available(iOS 13, tvOS 13, *)
     private func setupWebSocket() {
         WebSocket.globalInit(withJSQueue: jsQueue)
         WebSocket.extend(jsContext) { [weak self] instance in
