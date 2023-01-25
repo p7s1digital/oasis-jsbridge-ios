@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 52;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -12,17 +12,10 @@
 		607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607FACD91AFB9204008FA782 /* Main.storyboard */; };
 		607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDC1AFB9204008FA782 /* Images.xcassets */; };
 		607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDE1AFB9204008FA782 /* LaunchScreen.xib */; };
-		722DE55908B2C3280251AA33 /* Pods_JSBridge_Example.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F5D9FBD65B0913848872A4D /* Pods_JSBridge_Example.framework */; };
+		B03ACBDB29813C0F00C08B3D /* OasisJSBridge in Frameworks */ = {isa = PBXBuildFile; productRef = B03ACBDA29813C0F00C08B3D /* OasisJSBridge */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		09C6F4094FD3BA4C2F0E4FEB /* README.md */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
-		1680C12B95FB4C16E6F3350D /* Pods-JSBridge_Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-JSBridge_Example.release.xcconfig"; path = "Target Support Files/Pods-JSBridge_Example/Pods-JSBridge_Example.release.xcconfig"; sourceTree = "<group>"; };
-		1F5D9FBD65B0913848872A4D /* Pods_JSBridge_Example.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_JSBridge_Example.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		216809B119C35855E2B7EA59 /* Pods-JSBridge_Tests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-JSBridge_Tests.debug.xcconfig"; path = "Target Support Files/Pods-JSBridge_Tests/Pods-JSBridge_Tests.debug.xcconfig"; sourceTree = "<group>"; };
-		414D0EEF25F3845FB8C75C04 /* Pods-JSBridge_Tests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-JSBridge_Tests.release.xcconfig"; path = "Target Support Files/Pods-JSBridge_Tests/Pods-JSBridge_Tests.release.xcconfig"; sourceTree = "<group>"; };
-		50B235F1296C4974007DFE7B /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Package.swift; path = ../Package.swift; sourceTree = "<group>"; };
-		50B2AD40271476F6003F2D13 /* OasisJSBridge.podspec */ = {isa = PBXFileReference; lastKnownFileType = text; name = OasisJSBridge.podspec; path = ../OasisJSBridge.podspec; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		607FACD01AFB9204008FA782 /* JSBridge_Example.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JSBridge_Example.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		607FACD41AFB9204008FA782 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		607FACD51AFB9204008FA782 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -30,10 +23,7 @@
 		607FACDA1AFB9204008FA782 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		607FACDC1AFB9204008FA782 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		607FACDF1AFB9204008FA782 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/LaunchScreen.xib; sourceTree = "<group>"; };
-		91FC37695E95AF915C54F1DE /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = LICENSE; path = ../LICENSE; sourceTree = "<group>"; };
-		93E1AA9CAE2571C75EAD2F38 /* Pods-JSBridge_Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-JSBridge_Example.debug.xcconfig"; path = "Target Support Files/Pods-JSBridge_Example/Pods-JSBridge_Example.debug.xcconfig"; sourceTree = "<group>"; };
-		A80122F7B97424936FA87188 /* Pods_JSBridge_Tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_JSBridge_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		D70393322338AC680031550F /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Platforms/iPhoneOS.platform/Developer/Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
+		B03ACBD829813BF300C08B3D /* native-jsbridge-ios */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = "native-jsbridge-ios"; path = ../..; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,42 +31,19 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				722DE55908B2C3280251AA33 /* Pods_JSBridge_Example.framework in Frameworks */,
+				B03ACBDB29813C0F00C08B3D /* OasisJSBridge in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		028CC3315A3AB1013BF4C6BB /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				93E1AA9CAE2571C75EAD2F38 /* Pods-JSBridge_Example.debug.xcconfig */,
-				1680C12B95FB4C16E6F3350D /* Pods-JSBridge_Example.release.xcconfig */,
-				216809B119C35855E2B7EA59 /* Pods-JSBridge_Tests.debug.xcconfig */,
-				414D0EEF25F3845FB8C75C04 /* Pods-JSBridge_Tests.release.xcconfig */,
-			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
-		03D309F94E1F94C730247241 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				D70393322338AC680031550F /* XCTest.framework */,
-				1F5D9FBD65B0913848872A4D /* Pods_JSBridge_Example.framework */,
-				A80122F7B97424936FA87188 /* Pods_JSBridge_Tests.framework */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
 		607FACC71AFB9204008FA782 = {
 			isa = PBXGroup;
 			children = (
-				607FACF51AFB993E008FA782 /* Podspec Metadata */,
 				607FACD21AFB9204008FA782 /* Example for JSBridge */,
+				B03ACBD729813BF200C08B3D /* Packages */,
 				607FACD11AFB9204008FA782 /* Products */,
-				028CC3315A3AB1013BF4C6BB /* Pods */,
-				03D309F94E1F94C730247241 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -110,15 +77,12 @@
 			name = "Supporting Files";
 			sourceTree = "<group>";
 		};
-		607FACF51AFB993E008FA782 /* Podspec Metadata */ = {
+		B03ACBD729813BF200C08B3D /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				50B2AD40271476F6003F2D13 /* OasisJSBridge.podspec */,
-				09C6F4094FD3BA4C2F0E4FEB /* README.md */,
-				91FC37695E95AF915C54F1DE /* LICENSE */,
-				50B235F1296C4974007DFE7B /* Package.swift */,
+				B03ACBD829813BF300C08B3D /* native-jsbridge-ios */,
 			);
-			name = "Podspec Metadata";
+			name = Packages;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -128,17 +92,18 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 607FACEF1AFB9204008FA782 /* Build configuration list for PBXNativeTarget "JSBridge_Example" */;
 			buildPhases = (
-				4F5B83B429ED0B7231571584 /* [CP] Check Pods Manifest.lock */,
 				607FACCC1AFB9204008FA782 /* Sources */,
 				607FACCD1AFB9204008FA782 /* Frameworks */,
 				607FACCE1AFB9204008FA782 /* Resources */,
-				7A8DE2C84BA473E7DC2167D0 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = JSBridge_Example;
+			packageProductDependencies = (
+				B03ACBDA29813C0F00C08B3D /* OasisJSBridge */,
+			);
 			productName = JSBridge;
 			productReference = 607FACD01AFB9204008FA782 /* JSBridge_Example.app */;
 			productType = "com.apple.product-type.application";
@@ -189,49 +154,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		4F5B83B429ED0B7231571584 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-JSBridge_Example-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		7A8DE2C84BA473E7DC2167D0 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-JSBridge_Example/Pods-JSBridge_Example-frameworks.sh",
-				"${BUILT_PRODUCTS_DIR}/OasisJSBridge/OasisJSBridge.framework",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/OasisJSBridge.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-JSBridge_Example/Pods-JSBridge_Example-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		607FACCC1AFB9204008FA782 /* Sources */ = {
@@ -367,21 +289,24 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
-				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
 		607FACF01AFB9204008FA782 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 93E1AA9CAE2571C75EAD2F38 /* Pods-JSBridge_Example.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = JSBridge/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				MODULE_NAME = ExampleApp;
-				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.demo.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = "de.prosiebensat1digital.demo.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
@@ -390,14 +315,16 @@
 		};
 		607FACF11AFB9204008FA782 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1680C12B95FB4C16E6F3350D /* Pods-JSBridge_Example.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = JSBridge/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				MODULE_NAME = ExampleApp;
-				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.demo.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = "de.prosiebensat1digital.demo.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
@@ -426,6 +353,13 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B03ACBDA29813C0F00C08B3D /* OasisJSBridge */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OasisJSBridge;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 607FACC81AFB9204008FA782 /* Project object */;
 }

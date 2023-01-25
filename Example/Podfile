@@ -1,6 +1,0 @@
-use_frameworks!
-
-target 'JSBridge_Example' do
-  pod 'OasisJSBridge', :path => '../'
-  platform :ios, '9.0'
-end
