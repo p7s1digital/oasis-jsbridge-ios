@@ -17,11 +17,13 @@
 import Foundation
 import JavaScriptCore
 
+@available(iOS 13, tvOS 13, *)
 @objc protocol WebSocketCloseEventExportable: JSExport {
     var code: Int { get }
     var reason: String? { get }
 }
 
+@available(iOS 13, tvOS 13, *)
 @objc class WebSocketCloseEvent: NSObject, WebSocketCloseEventExportable {
     let code: Int
     let reason: String?
@@ -32,10 +34,12 @@ import JavaScriptCore
     }
 }
 
+@available(iOS 13, tvOS 13, *)
 @objc protocol WebSocketMessageEventExportable: JSExport {
     var data: Any { get }
 }
 
+@available(iOS 13, tvOS 13, *)
 @objc class WebSocketMessageEvent: NSObject, WebSocketMessageEventExportable {
     let data: Any
     

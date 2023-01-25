@@ -1,22 +1,32 @@
 import Foundation
 import JavaScriptCore
-//import Logging
 
-private enum XMLHttpRequestStatus: NSNumber {
-    case unsent = 0, opened, headers, loading, done
-}
-
+/// https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest
+/// https://xhr.spec.whatwg.org/#interface-xmlhttprequest
 @objc protocol XMLHttpRequestJSExport: JSExport {
-    var onload: JSValue? { get set }
-    var onsend: JSValue? { get set }
-    var onreadystatechange: JSValue? { get set }
-    var onabort: JSValue? { get set }
-    var onerror: JSValue? { get set }
+    // Instance properties
+
     var readyState: NSNumber { get set }
     var response: Any? { get set }
     var responseText: String? { get set }
     var responseType: String { get set }
     var status: NSNumber { get set }
+
+    // Events
+
+    // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest#events
+    var onreadystatechange: JSValue? { get set }
+    var onload: JSValue? { get set }
+    var onsend: JSValue? { get set }
+    var onabort: JSValue? { get set }
+    var onerror: JSValue? { get set }
+
+    /// https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
+    func addEventListener(_ type: String, _ handler: JSValue)
+    /// https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/removeEventListener
+    func removeEventListener(_ type: String, _ handler: JSValue)
+
+    // Instance methods
 
     func open(_ httpMethod: String, _ url: String)
     func send(_ data: Any?)
@@ -24,56 +34,79 @@ private enum XMLHttpRequestStatus: NSNumber {
     func setRequestHeader(_ header: String, _ value: String)
     func getAllResponseHeaders() -> String
     func getResponseHeader(_ name: String) -> String?
-    func addEventListener(_ type: String, _ handler: JSValue)
-    func removeEventListener(_ type: String, _ handler: JSValue)
 }
 
+/**
+ Native implementation of XMLHttpRequest object to request data from a server.
+ It is available out-of-the-box in all modern browsers and in WebKit, but not available in JavaScriptCore.
+
+ Limitations of the native implementation:
+ - Only a limited set of event callback properties is available, but all event listener events are available.
+ - Only the first event listener registered for each event type will be called.
+ - Requests cannot be reused. To avoid capturing `JSContext`, all request callbacks and listeners are removed after handling the response.
+ */
 @objc class XMLHttpRequest: NSObject {
+    /// https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/readyState
+    enum ReadyState: NSNumber {
+        case unsent = 0, opened, headersReceived, loading, done
+    }
+
     // MARK: Internal properties
 
-    dynamic var readyState = XMLHttpRequestStatus.unsent.rawValue
-    dynamic var onload: JSValue?
-    dynamic var onsend: JSValue?
-    dynamic var onreadystatechange: JSValue?
-    dynamic var onabort: JSValue?
-    dynamic var onerror: JSValue?
+    dynamic var readyState = ReadyState.unsent.rawValue
     dynamic var response: Any?
     dynamic var responseText: String?
     dynamic var responseType = ""
     dynamic var status: NSNumber = 0
 
+    dynamic var onreadystatechange: JSValue?
+    dynamic var onload: JSValue?
+    dynamic var onsend: JSValue?
+    dynamic var onabort: JSValue?
+    dynamic var onerror: JSValue?
+
     // MARK: Private properties
 
     private let jsQueue: DispatchQueue
+    private let urlSession: URLSession
+    private let logger: ((String) -> Void)?
+    private var eventListeners = [XMLHttpRequestEvent.EventType: JSValue]()
+
+    private var request: URLRequest?
+    private var dataTask: URLSessionDataTask?
     private var responseHeaders = [String: String]()
     private var responseHeadersString = ""
-    private var request: URLRequest?
-
-    private var eventHandlerDictionary = [EventHandlerEventType: JSValue]()
-
-    private lazy var urlCharacterSet: CharacterSet = {
-        CharacterSet(charactersIn: ";,/?:@&=+$-_.!~*'()%").union(.urlHostAllowed)
-    }()
 
     // MARK: Init
 
-    init(_ jsQueue: DispatchQueue = DispatchQueue.global()) {
+    init(urlSession: URLSession, jsQueue: DispatchQueue, logger: ((String) -> Void)?) {
+        self.urlSession = urlSession
         self.jsQueue = jsQueue
+        self.logger = logger
+
         super.init()
     }
 
     // MARK: Internal static methods
 
-    static func configure(jsQueue: DispatchQueue, context: JSContext) {
+    static func configure(
+        urlSession: URLSession,
+        jsQueue: DispatchQueue,
+        context: JSContext,
+        logger: ((String) -> Void)? = nil
+    ) {
         jsQueue.async {
-            let constructor: @convention(block) () -> XMLHttpRequest = { XMLHttpRequest(jsQueue) }
+            let constructor: @convention(block) () -> XMLHttpRequest = {
+                XMLHttpRequest(urlSession: urlSession, jsQueue: jsQueue, logger: logger)
+            }
             context.setObject(constructor, forKeyedSubscript: NSString(string: "XMLHttpRequest"))
+
             let xmlRequest = context.objectForKeyedSubscript("XMLHttpRequest")!
-            xmlRequest.setObject(XMLHttpRequestStatus.unsent.rawValue, forKeyedSubscript: NSString(string: "UNSENT"))
-            xmlRequest.setObject(XMLHttpRequestStatus.opened.rawValue, forKeyedSubscript: NSString(string: "OPENED"))
-            xmlRequest.setObject(XMLHttpRequestStatus.loading.rawValue, forKeyedSubscript: NSString(string: "LOADING"))
-            xmlRequest.setObject(XMLHttpRequestStatus.headers.rawValue, forKeyedSubscript: NSString(string: "HEADERS_RECEIVED"))
-            xmlRequest.setObject(XMLHttpRequestStatus.done.rawValue, forKeyedSubscript: NSString(string: "DONE"))
+            xmlRequest.setObject(ReadyState.unsent.rawValue, forKeyedSubscript: NSString(string: "UNSENT"))
+            xmlRequest.setObject(ReadyState.opened.rawValue, forKeyedSubscript: NSString(string: "OPENED"))
+            xmlRequest.setObject(ReadyState.loading.rawValue, forKeyedSubscript: NSString(string: "LOADING"))
+            xmlRequest.setObject(ReadyState.headersReceived.rawValue, forKeyedSubscript: NSString(string: "HEADERS_RECEIVED"))
+            xmlRequest.setObject(ReadyState.done.rawValue, forKeyedSubscript: NSString(string: "DONE"))
         }
     }
 }
@@ -82,41 +115,45 @@ private enum XMLHttpRequestStatus: NSNumber {
 
 extension XMLHttpRequest: XMLHttpRequestJSExport {
     func open(_ httpMethod: String, _ urlString: String) {
-//        guard let encodedString = urlString.addingPercentEncoding(withAllowedCharacters: urlCharacterSet),
-          guard let url = URL(string: urlString) else {
-//            jTrace("Cannot create URL from \(urlString)", type: .error, category: .playerKit)
-            onerror?.call(withArguments: [])
-            return
+        if let url = URL(string: urlString) {
+            var request = URLRequest(url: url)
+            request.httpMethod = httpMethod
+            self.request = request
+        } else {
+            log("Cannot create URL from \(urlString)")
+            self.request = nil
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = httpMethod
-        self.request = request
-
-        readyState = XMLHttpRequestStatus.opened.rawValue
-        onreadystatechange?.call(withArguments: [])
+        readyState = ReadyState.opened.rawValue
+        emitEvent(type: .readyStateChange)
     }
 
     func send(_ data: Any?) {
-        guard var request else { return }
+        // DOMException: Failed to execute 'send' on 'XMLHttpRequest': The object's state must be OPENED.
+        guard readyState == ReadyState.opened.rawValue else {
+            log("Failed to execute 'send' on 'XMLHttpRequest': The object's state must be \(ReadyState.opened.rawValue) (OPENED), but it is \(readyState)")
+            return
+        }
 
-        onsend?.call(withArguments: [])
-        let eventPayload = EventPayload(type: .loadStart, value: self)
-        emitEvent(type: .loadStart, payload: eventPayload)
+        emitEvent(type: .loadStart)
+
+        // Requests created with invalid URL shall fail.
+        guard var request else {
+            finishWithError()
+            return
+        }
 
         if let payload = data as? String {
             request.httpBody = payload.data(using: .utf8)
         }
 
-        let config = URLSessionConfiguration.default
-        config.requestCachePolicy = .reloadIgnoringLocalCacheData
-        let session = URLSession(configuration: config)
-        session.dataTask(with: request) { [weak self] data, response, error in
-            self?.processResponse(data, response, error)
-        }.resume()
-
-        readyState = XMLHttpRequestStatus.loading.rawValue
-        onreadystatechange?.call(withArguments: [])
+        let dataTask = urlSession.dataTask(with: request) { [weak self] data, response, error in
+            self?.jsQueue.async {
+                self?.processResponse(data, response, error)
+            }
+        }
+        self.dataTask = dataTask
+        dataTask.resume()
     }
 
     func setRequestHeader(_ header: String, _ value: String) {
@@ -124,7 +161,19 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
     }
 
     func abort() {
-        readyState = XMLHttpRequestStatus.unsent.rawValue
+        if let dataTask {
+            dataTask.cancel()
+            self.dataTask = nil
+
+            readyState = ReadyState.done.rawValue
+            emitEvent(type: .readyStateChange)
+
+            emitEvent(type: .abort)
+            emitEvent(type: .loadEnd)
+        }
+
+        readyState = ReadyState.unsent.rawValue
+        status = 0
     }
 
     func getAllResponseHeaders() -> String {
@@ -136,92 +185,130 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
     }
 
     func addEventListener(_ type: String, _ handler: JSValue) {
-        guard let eventHandlerEventType = EventHandlerEventType(rawValue: type),
-              eventHandlerDictionary[eventHandlerEventType] == nil else { return }
+        guard let eventType = XMLHttpRequestEvent.EventType(rawValue: type), eventListeners[eventType] == nil else { return }
 
-        eventHandlerDictionary[eventHandlerEventType] = handler
+        eventListeners[eventType] = handler
     }
 
     func removeEventListener(_ type: String, _ handler: JSValue) {
-        guard let eventHandlerEventType = EventHandlerEventType(rawValue: type) else { return }
+        guard let eventType = XMLHttpRequestEvent.EventType(rawValue: type) else { return }
 
-        eventHandlerDictionary[eventHandlerEventType] = nil
+        eventListeners[eventType] = nil
     }
 
     // MARK: Private methods
 
-    private func emitEvent(type: EventHandlerEventType, payload: EventPayloadProtocol) {
-        guard let eventHandler = eventHandlerDictionary[type] else { return }
-
-        eventHandler.call(withArguments: [payload])
+    private func log(_ message: String) {
+        logger?(message)
     }
 
+    /// Links XHR Event Type to property callbacks
+    private func eventProperty(eventType: XMLHttpRequestEvent.EventType) -> JSValue? {
+        switch eventType {
+        case .abort:
+            return onabort
+        case .error:
+            return onerror
+        case .load:
+            return onload
+        case .loadStart:
+            return onsend
+        case .readyStateChange:
+            return onreadystatechange
+        default:
+            return nil
+        }
+    }
+
+    private func emitEvent(type: XMLHttpRequestEvent.EventType) {
+        let property = eventProperty(eventType: type)
+        let listener = eventListeners[type]
+
+        // Skip creating event payload if there are no callbacks for given eventType
+        guard property != nil || listener != nil else { return }
+
+        let eventPayload = XMLHttpRequestEvent(type: type, value: self)
+        property?.call(withArguments: [eventPayload])
+        listener?.call(withArguments: [eventPayload])
+    }
+
+    /// Nullifies all JSValue instances to avoid a retain cycle causing the JSContext instance to be leaked
     func clearJSValues() {
         onreadystatechange = nil
         onload = nil
+        onsend = nil
         onabort = nil
         onerror = nil
+
+        eventListeners.removeAll()
+    }
+
+    /// Performs a chain of actions which happens when XHR
+    ///   - has been opened and sent with invalid/broken URL;
+    ///   - fails with a network error.
+    private func finishWithError() {
+        readyState = ReadyState.done.rawValue
+        emitEvent(type: .readyStateChange)
+
+        emitEvent(type: .error)
+        emitEvent(type: .loadEnd)
     }
 
     private func processResponse(_ data: Data?, _ response: URLResponse?, _ error: Error?) {
-        guard let response = response as? HTTPURLResponse, error == nil else {
-            readyState = XMLHttpRequestStatus.done.rawValue
-            onreadystatechange?.call(withArguments: [])
+        defer { clearJSValues() }
 
-            let eventPayload = EventPayload(type: .error, value: self)
-            emitEvent(type: .error, payload: eventPayload)
-            
-            onerror?.call(withArguments: [eventPayload])
-
+        if let error = error as? NSError, error.domain == NSURLErrorDomain, error.code == NSURLErrorCancelled {
             return
         }
 
-        jsQueue.async { [weak self] in
-            defer { self?.clearJSValues() }
-            guard let self else { return }
+        guard let response = response as? HTTPURLResponse, error == nil else {
+            finishWithError()
+            return
+        }
 
-            if self.readyState == XMLHttpRequestStatus.unsent.rawValue {
-                self.onabort?.call(withArguments: [])
-                return
-            }
+        if !(200 ..< 300 ~= response.statusCode) {
+            log("XHR response returned with status code \(response.statusCode) for \"\(String(describing: response.url))\"")
+        }
 
-            self.status = NSNumber(value: response.statusCode)
+        status = NSNumber(value: response.statusCode)
+        decodeResponse(data: data, responseType: responseType)
 
-//            if !response.isInSuccessRange {
-//                jTrace("XHR response returned with status code \(response.statusCode) for \"\(String(describing: response.url))\"", type: .warning, category: .playerKit)
-//            }
+        for field in response.allHeaderFields {
+            guard
+                let key = (field.key as? String)?.lowercased(),
+                let value = field.value as? String else { continue }
+            responseHeadersString += (key + ": " + value + "\r\n")
+            responseHeaders[key] = value
+        }
 
-            if let data {
-                if self.responseType == "json" {
-                    let json = try? JSONSerialization.jsonObject(with: data)
-                    self.response = json
-                } else {
-                    self.responseText = String(data: data, encoding: .utf8)
-                    self.response = self.responseText
-                }
-            }
+        readyState = ReadyState.headersReceived.rawValue
+        emitEvent(type: .readyStateChange)
 
-            for field in response.allHeaderFields {
-                guard
-                    let key = (field.key as? String)?.lowercased(),
-                    let value = field.value as? String else { continue }
-                self.responseHeadersString += (key + ": " + value + "\r\n")
-                self.responseHeaders[key] = value
-            }
+        readyState = ReadyState.loading.rawValue
+        emitEvent(type: .readyStateChange)
 
-            self.readyState = XMLHttpRequestStatus.done.rawValue
-            self.onreadystatechange?.call(withArguments: [])
+        emitEvent(type: .progress)
 
-            var eventPayload = EventPayload(type: .readyStateChange, value: self)
-            self.emitEvent(type: .readyStateChange, payload: eventPayload)
+        readyState = ReadyState.done.rawValue
+        emitEvent(type: .readyStateChange)
 
-            eventPayload = EventPayload(type: .load, value: self)
-            self.emitEvent(type: .load, payload: eventPayload)
+        emitEvent(type: .load)
+        emitEvent(type: .loadEnd)
+    }
 
-            self.onload?.call(withArguments: [])
+    private func decodeResponse(data: Data?, responseType: String) {
+        // Reset fields state
+        responseText = nil
+        response = nil
 
-            eventPayload = EventPayload(type: .loadEnd, value: self)
-            self.emitEvent(type: .loadEnd, payload: eventPayload)
+        guard let data else { return }
+
+        switch responseType {
+        case "json":
+            response = try? JSONSerialization.jsonObject(with: data)
+        default:
+            responseText = String(data: data, encoding: .utf8)
+            response = responseText
         }
     }
 }

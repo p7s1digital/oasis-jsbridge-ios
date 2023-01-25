@@ -23,8 +23,7 @@ public class JavascriptPromise<T: Codable> {
     private var catchCallback: ((JSBridgeError) -> Void)?
     private var isCancelled = false
 
-    public init() {
-    }
+    public init() {}
     
     @discardableResult public func then(_ callback: @escaping ((T) -> Void)) -> JavascriptPromise<T> {
         thenCallback = callback
@@ -70,6 +69,8 @@ public class JavascriptValuePromise {
     private var thenCallback: ((JSValue) -> Void)?
     private var catchCallback: ((JSBridgeError) -> Void)?
     private var isCancelled = false
+
+    public init() {}
 
     @discardableResult public func then(_ callback: @escaping ((JSValue) -> Void)) -> JavascriptValuePromise {
         thenCallback = callback
