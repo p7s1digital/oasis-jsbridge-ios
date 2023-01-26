@@ -17,10 +17,12 @@
 import Foundation
 import JavaScriptCore
 
+@available(iOS 13, tvOS 13, *)
 enum WebSocketState: Int {
     case connecting, open, closing, closed
 }
 
+@available(iOS 13, tvOS 13, *)
 @objc protocol WebSocketProtocol: JSExport {
     var onclose: JSValue? { get set }
     var onerror: JSValue? { get set }
@@ -33,6 +35,7 @@ enum WebSocketState: Int {
     func send(_ obj: Any)
 }
 
+@available(iOS 13, tvOS 13, *)
 @objc class WebSocket: NSObject, WebSocketProtocol {
     
     private static weak var jsQueue: DispatchQueue!
@@ -176,6 +179,7 @@ enum WebSocketState: Int {
     }
 }
 
+@available(iOS 13, tvOS 13, *)
 extension WebSocket: URLSessionWebSocketDelegate {
     
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
