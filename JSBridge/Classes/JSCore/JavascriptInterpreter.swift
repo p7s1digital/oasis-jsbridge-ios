@@ -25,64 +25,54 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     public var jsContext: JSContext!
     private let jsQueue: DispatchQueue
     private var urlSession = JavascriptInterpreter.createURLSession()
-    private var pendingTimeouts = [Timeout]()
+    private let timeouts: JavascriptTimeouts
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
     private var webSocketInstances = NSPointerArray.weakObjects()
-    private let jsBridgeBundle: Bundle!
+    private let localStorage = LocalStorage()
+    private let sessionStorage = SessionStorage()
     private var lastException: JSValue?
     
     enum JSError: Error {
         case runtimeError(String)
     }
-    
-    private class Timeout {
-        private static var timeoutIdCounter: Int = 0
-        
-        var block: (() -> ())?
-        let callback: JSValue?
-        let id: Int
-        
-        init(callback: JSValue?) {
-            self.id = Timeout.timeoutIdCounter
-            Timeout.timeoutIdCounter = Timeout.timeoutIdCounter + 1
-            self.callback = callback
-        }
-    }
 
     // MARK: - Initializer
 
     public init() {
-
         jsContext = JSContext()!
-
-        jsBridgeBundle = Bundle(for: JavascriptInterpreter.self)
 
         jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
         jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
 
+        timeouts = JavascriptTimeouts(queue: jsQueue)
+
         setupExceptionHandling()
         setupGlobal()
         setupConsole()
-        setupPromise()
         setupNativePromise()
         setupStringify()
         setupTimeoutAndInterval()
         setupXMLHttpRequest()
-        setupWebSocket()
+        if #available(iOS 13, tvOS 13, *) {
+            setupWebSocket()
+        }
         setupLoadURL()
-        setupLocalStorage()
+        setupStorage()
     }
 
     deinit {
         Logger.debug("JSCoreJavascriptInterpreter - destroy()")
-        for instance in xmlHttpRequestInstances.allObjects {
-            (instance as? XMLHttpRequest)?.clearJSValues()
-        }
-        urlSession.reset { }
+
+        xmlHttpRequestInstances.allObjects.forEach({ ($0 as? XMLHttpRequest)?.clearJSValues() })
         xmlHttpRequestInstances = NSPointerArray.weakObjects()
-        webSocketInstances.allObjects.forEach({ ($0 as? WebSocket)?.clear() })
-        webSocketInstances = NSPointerArray.weakObjects()
-        pendingTimeouts.removeAll()
+        urlSession.reset { }
+
+        if #available(iOS 13, tvOS 13, *) {
+            webSocketInstances.allObjects.forEach({ ($0 as? WebSocket)?.clear() })
+            webSocketInstances = NSPointerArray.weakObjects()
+        }
+
+        timeouts.clearAll()
         jsContext = nil
     }
 
@@ -160,6 +150,22 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
                 }
             }
         }
+    }
+
+    @discardableResult
+    public func evaluateScript(_ script: String) throws -> JSValue? {
+        var result: JSValue?
+
+        runOnJSQueue(synchronous: true) { [self] in
+            lastException = nil
+            result = jsContext.evaluateScript(script)
+        }
+
+        if let lastException {
+            throw JSBridgeError(type: .jsEvaluationFailed, message: lastException.toString())
+        }
+
+        return result
     }
     
     // MARK: - calling JS functions
@@ -346,21 +352,13 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
 
     func runOnJSQueue(synchronous: Bool = false, _ block: @escaping () -> Void) {
-
         if isRunningOnJSQueue() {
             block()
-            runPromiseQueue()
         } else {
             if synchronous {
-                jsQueue.sync { [weak self] in
-                    block()
-                    self?.runPromiseQueue()
-                }
+                jsQueue.sync(execute: block)
             } else {
-                jsQueue.async { [weak self] in
-                    block()
-                    self?.runPromiseQueue()
-                }
+                jsQueue.async(execute: block)
             }
         }
     }
@@ -376,12 +374,9 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
 
     private func setupExceptionHandling() {
-        // Catch exceptions
         jsContext.exceptionHandler = { [weak self] context, exception in
-            
             self?.lastException = exception
-            
-            Logger.error("******")
+
             if let stacktrace = exception?.objectForKeyedSubscript("stack") {
                 Logger.error("JS ERROR: \(exception!)\n\(stacktrace)")
             } else if let exception = exception {
@@ -389,16 +384,14 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             } else {
                 Logger.error("UNKNOWN JS ERROR")
             }
-            Logger.error("******")
         }
     }
 
     private func setupGlobal() {
-        let str = """
+        jsContext.evaluateScript("""
             var global = this;
             var window = this;
-        """
-        jsContext.evaluateScript(str)
+        """)
     }
 
     private func setupConsole() {
@@ -433,20 +426,8 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     // MARK: - Promise
 
-    static let needsPromisePolyfill = ProcessInfo().operatingSystemVersion.majorVersion < 10
-
-    private func setupPromise() {
-
-        guard JavascriptInterpreter.needsPromisePolyfill else { return }
-
-        // on iOS 8 a Promise is existing, but doesn't work due to missing event-loop => we don't support this case
-        // on iOS 9 Promise is non-existing
-        // since iOS 10 Promise are working on JSCore
-        evaluateLocalFile(bundle: jsBridgeBundle, filename: "promise.js", cb: {})
-    }
-
     private func setupNativePromise() {
-        evaluateString(js: """
+        jsContext.evaluateScript("""
             jsBridgeCreatePromiseWrapper = () => {
               var wrapper = {}
               wrapper.promise = new Promise((resolve, reject) => {
@@ -455,153 +436,58 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
               })
               return wrapper
             }
-            """)
+        """)
     }
 
     private func setupStringify() {
-        evaluateLocalFile(bundle: jsBridgeBundle, filename: "customStringify.js", cb: {})
-    }
-
-    private func runPromiseQueue() {
-
-        if JavascriptInterpreter.needsPromisePolyfill {
-            jsContext.evaluateScript("Promise.runQueue();")
-        }
-    }
-
-    // MARK: - Local Storage
-
-    func setupLocalStorage() {
-
-        let userDefaultsPrefix = "jsBridge"
-
-        let setItem: @convention(block) (String, String) -> Void = { key, value in
-            UserDefaults.standard.set(value, forKey: "\(userDefaultsPrefix)\(key)")
-            UserDefaults.standard.synchronize()
-        }
-        jsContext.setObject(setItem, forKeyedSubscript: "jsBridgeLocalStorageSetItem" as NSString)
-
-        let getItem: @convention(block) (String) -> String? = { key in
-            return UserDefaults.standard.value(forKey: "\(userDefaultsPrefix)\(key)") as? String
-        }
-        jsContext.setObject(getItem, forKeyedSubscript: "jsBridgeLocalStorageGetItem" as NSString)
-
-        let removeItem: @convention(block) (String) -> Void = { key in
-            UserDefaults.standard.removeObject(forKey: "\(userDefaultsPrefix)\(key)")
-            UserDefaults.standard.synchronize()
-        }
-        jsContext.setObject(removeItem, forKeyedSubscript: "jsBridgeLocalStorageRemoveItem" as NSString)
-
-        let clear: @convention(block) () -> Void = {
-            let keys = UserDefaults.standard.dictionaryRepresentation().keys.filter { $0.hasPrefix(userDefaultsPrefix) }
-            for key in keys {
-                UserDefaults.standard.removeObject(forKey: key)
-            }
-            UserDefaults.standard.synchronize()
-        }
-        jsContext.setObject(clear, forKeyedSubscript: "jsBridgeLocalStorageClear" as NSString)
-
-        evaluateString(js: """
-            localStorage = {
-                setItem: (key, value) => {
-                    let json = JSON.stringify(value)
-                    jsBridgeLocalStorageSetItem(key, json)
-                },
-                getItem: (key) => {
-                    let json = jsBridgeLocalStorageGetItem(key)
-                    if (json == undefined) {
-                        return json
-                    }
-                    return JSON.parse(json)
-                },
-                removeItem: (key) => {
-                    return jsBridgeLocalStorageRemoveItem(key)
-                },
-                clear: () => {
-                    jsBridgeLocalStorageClear()
+        jsContext.evaluateScript("""
+            function __jsBridge__stringify(err) {
+              var replaceErrors = function (_key, value) {
+                if (value instanceof Error) {
+                  // Replace Error instance into plain JS objects using Error own properties
+                  return Object.getOwnPropertyNames(value).reduce(function (acc, key) {
+                    acc[key] = value[key];
+                    return acc;
+                  }, {});
                 }
+
+                return value;
+              };
+
+              return JSON.stringify(err, replaceErrors);
             }
-            window.localStorage = localStorage
-            """)
+        """)
+    }
+
+    // MARK: - Storage
+
+    func setupStorage() {
+        jsContext.setObject(localStorage, forKeyedSubscript: "localStorage" as NSString)
+        jsContext.setObject(sessionStorage, forKeyedSubscript: "sessionStorage" as NSString)
     }
 
     // MARK: - Timeout and Interval
 
     private func setupTimeoutAndInterval() {
-        setTimeoutHelper(setFunctionName: "setTimeout", clearFunctionName: "clearTimeout", doRepeat: false)
-        setTimeoutHelper(setFunctionName: "setInterval", clearFunctionName: "clearInterval", doRepeat: true)
-    }
-
-    func setTimeoutHelper(setFunctionName: String, clearFunctionName: String, doRepeat: Bool) {
-        // setTimeout(cb, msecs) -> String
-        let setTimeout: @convention(block) (JSValue, Double) -> String? = { [weak self] function, msecsInput in
-
-            let allArguments = JSContext.currentArguments() ?? []
-            let safeArguments = allArguments.count > 2 ? allArguments[2...] : []
-            let arguments = Array(safeArguments)
-            let msecs = msecsInput.isNaN ? 0 : Int(msecsInput)
-
-            let timeout = Timeout(callback: function)
-            self?.pendingTimeouts.append(timeout)
-
-            Logger.verbose("Timeout \(timeout.id) started, msecs = \(msecs)")
-
-            let triggerBlock = { [weak self, weak function, weak timeout] in
-                guard let strongSelf = self else {
-                    return
-                }
-                
-                guard let timeout = timeout, strongSelf.pendingTimeouts.contains(where: { $0.id == timeout.id }) else {
-                    Logger.warning("setTimeout callback with timeoutId = \(String(describing: timeout?.id)) not called because it was aborted!")
-                    return
-                }
-
-                Logger.verbose("Timeout \(timeout.id) triggered")
-                function?.call(withArguments: arguments)
-
-                if doRepeat {
-                    Logger.verbose("Repeating timeout \(timeout.id)...")
-                    timeout.block?()
-                } else {
-                    strongSelf.pendingTimeouts.removeAll(where: { $0.id == timeout.id })
-                }
-
-                strongSelf.runPromiseQueue()
+        let native = "__jsBridge__timeouts"
+        jsContext.setObject(timeouts, forKeyedSubscript: native as NSString)
+        jsContext.evaluateScript("""
+            function setInterval(callback, ms, ...args) {
+              return \(native).setInterval(callback, ms, ...args)
             }
-
-            timeout.block = { [weak self] in
-                // Delay
-                let delayTime = DispatchTime.now() + DispatchTimeInterval.milliseconds(msecs)
-                self?.jsQueue.asyncAfter(deadline: delayTime, execute: triggerBlock)
+            function setTimeout(callback, ms, ...args) {
+              return \(native).setTimeout(callback, ms, ...args)
             }
-            timeout.block?()
-            return "\(timeout.id)"
-        }
-
-        jsContext.setObject(setTimeout, forKeyedSubscript: setFunctionName as NSString)
-
-        // clearTimeout(timeoutId)
-        let clearTimeout: @convention(block) (String) -> Void = { [weak self] strTimeoutId in
-            guard let strongSelf = self else {
-                return
+            function clearTimeout(identifier) {
+              \(native).clearTimeout(identifier)
             }
-
-            guard let timeoutId = Int(strTimeoutId) else {
-                Logger.warning("Cannot abort timeout with id \(strTimeoutId): invalid id!")
-                return
+            function clearInterval(identifier) {
+              \(native).clearInterval(identifier)
             }
-
-            // remove value for timeoutId and check the result or removing
-            guard let foundTimeoutIndex = strongSelf.pendingTimeouts.firstIndex(where: { $0.id == timeoutId }) else {
-                Logger.warning("Cannot abort timeout with id \(strTimeoutId) because there is no pending timeout with this id")
-                return
-            }
-            
-            strongSelf.pendingTimeouts.remove(at: foundTimeoutIndex)
-
-            Logger.debug("Aborted timeout with id \(strTimeoutId)")
-        }
-        jsContext.setObject(clearTimeout, forKeyedSubscript: clearFunctionName as NSString)
+            function setImmediate() {
+              console.log(`### setImmediate() NOT IMPLEMENTED`)
+            };
+        """)
     }
 
     // MARK: - XMLHttpRequest
@@ -615,27 +501,12 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
 
     private func setupXMLHttpRequest() {
-        XMLHttpRequest.globalInit(with: urlSession, jsQueue: jsQueue)
-        XMLHttpRequest.extend(jsContext, onNewInstance: { [weak self] instance in
-            guard let strongSelf = self else {
-                instance.clearJSValues()
-                return
-            }
-
-            instance.onCompleteHandler = {
-                self?.runOnJSQueue {
-                    self?.runPromiseQueue()
-                }
-            }
-            instance.loggingHandler = { (message) in
-                Logger.verbose(message)
-            }
-
-            let pointer = Unmanaged.passUnretained(instance).toOpaque()
-            strongSelf.xmlHttpRequestInstances.addPointer(pointer)
+        XMLHttpRequest.configure(urlSession: urlSession, jsQueue: jsQueue, context: jsContext, logger: {
+            Logger.verbose("XHR: \($0)")
         })
     }
     
+    @available(iOS 13, tvOS 13, *)
     private func setupWebSocket() {
         WebSocket.globalInit(withJSQueue: jsQueue)
         WebSocket.extend(jsContext) { [weak self] instance in

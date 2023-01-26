@@ -22,6 +22,9 @@ public protocol JavascriptInterpreterProtocol: AnyObject {
     func evaluateLocalFile(bundle: Bundle, filename: String, cb: (() -> Void)?)
     func evaluateString(js: String, cb: ((_: JSValue?, _: JSBridgeError?) -> Void)?)
 
+    @discardableResult
+    func evaluateScript(_ script: String) throws -> JSValue?
+
     func callSynchronously(object: JSValue?, functionName: String, arguments: [Any]) -> JSValue
 
     func call(object: JSValue?,

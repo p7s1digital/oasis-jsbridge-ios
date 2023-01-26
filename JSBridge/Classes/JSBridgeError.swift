@@ -15,6 +15,7 @@
  */
 
 import Foundation
+import JavaScriptCore
 
 open class JSBridgeError: NSObject, Error {
     public let type: String
