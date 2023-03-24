@@ -54,6 +54,26 @@ import OHHTTPStubs
     }
 }
 
+private class LogInterceptor: JSBridgeLoggingProtocol {
+    typealias LogHandler = (
+        _ level: OasisJSBridge.JSBridgeLoggingLevel,
+        _ message: String,
+        _ file: StaticString,
+        _ function: StaticString,
+        _ line: UInt
+    ) -> Void
+
+    let handler: LogHandler
+
+    init(handler: @escaping LogHandler) {
+        self.handler = handler
+    }
+
+    func log(level: OasisJSBridge.JSBridgeLoggingLevel, message: String, file: StaticString, function: StaticString, line: UInt) {
+        handler(level, message, file, function, line)
+    }
+}
+
 class JavascriptInterpreterTest: XCTestCase {
     private let native = Native()
 
@@ -143,6 +163,37 @@ class JavascriptInterpreterTest: XCTestCase {
             // THEN
             expectation.fulfill()
         }
+
+        // THEN
+        waitForExpectations(timeout: 1)
+    }
+
+    func testConsoleLogMultipleArguments() {
+        // WHEN
+        let subject = createJavascriptInterpreter()
+
+        // THEN
+        let items: [String: (js: String, suffix: String)] = [
+            UUID().uuidString: ("console.log(id, 'this sentence is', 4, 'ever', false);", "this sentence is 4 ever false"),
+            UUID().uuidString: ("console.assert(false, id, 'The answer is', 42);", "The answer is 42"),
+        ]
+        let js = items.map { "var id = '\($0)';\n\($1.js)" }.joined(separator: "\n")
+
+        let expectation = self.expectation(description: "js")
+        expectation.expectedFulfillmentCount = items.count
+
+        let logger = LogInterceptor { _, message, _, _, _ in
+            print(#function, "Received message <\(message)>")
+            guard let item = items.first(where: { message.contains($0.key) }) else { return }
+            XCTAssertTrue(message.hasSuffix(item.value.suffix), "<\(message)> does not end with <\(item.value.suffix)>")
+            expectation.fulfill()
+        }
+        JSBridgeConfiguration.add(logger: logger)
+        addTeardownBlock {
+            JSBridgeConfiguration.remove(logger: logger)
+        }
+
+        subject.evaluateString(js: js)
 
         // THEN
         waitForExpectations(timeout: 1)

@@ -408,7 +408,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
                 return
             }
 
-            let str = "JS ASSERTION FAILED: " + JSContext.currentArguments()!.suffix(from: 1).map { "\($0)" }.joined()
+            let str = "JS ASSERTION FAILED: " + JSContext.currentArguments()!.suffix(from: 1).map { "\($0)" }.joined(separator: " ")
             Logger.error(str)
         }
         let console = jsContext.objectForKeyedSubscript("console")
@@ -417,7 +417,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     private func consoleHelper(methodName: String, level: JSBridgeLoggingLevel) {
         let consoleFunc: @convention(block) () -> Void = {
-            let message = JSContext.currentArguments()!.map { "\($0)"}.joined()
+            let message = JSContext.currentArguments()!.map { "\($0)"}.joined(separator: " ")
             Logger.log(level: level, message: message)
         }
         let console = jsContext.objectForKeyedSubscript("console")
