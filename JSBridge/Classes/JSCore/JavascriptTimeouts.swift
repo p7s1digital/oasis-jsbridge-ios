@@ -27,7 +27,9 @@ import JavaScriptCore
     }
 
     func clearAll() {
-        timeouts.removeAll()
+        queue.async {
+            self.timeouts.removeAll()
+        }
     }
 
     // MARK: JavascriptTimeoutsExport
@@ -56,7 +58,10 @@ import JavaScriptCore
         let timeout = Timeout {
             callback.call(withArguments: arguments)
         }
-        timeouts[timeout.id] = timeout
+
+        queue.async(flags: .barrier) {
+            self.timeouts[timeout.id] = timeout
+        }
 
         let milliseconds = milliseconds.isNaN ? 0 : Int(milliseconds)
         scheduleTimer(identifier: timeout.id, milliseconds: milliseconds, repeats: repeats)
@@ -83,10 +88,12 @@ import JavaScriptCore
     private func invalidateTimer(identifier: String) {
         guard identifier != "undefined" else { return }
 
-        if timeouts.removeValue(forKey: identifier) != nil {
-            Logger.debug("Aborted timeout with id \(identifier)")
-        } else {
-            Logger.warning("Cannot abort timeout with id \(identifier): invalid id!")
+        queue.async(flags: .barrier) {
+            if self.timeouts.removeValue(forKey: identifier) != nil {
+                Logger.debug("Aborted timeout with id \(identifier)")
+            } else {
+                Logger.warning("Cannot abort timeout with id \(identifier): invalid id!")
+            }
         }
     }
 }
