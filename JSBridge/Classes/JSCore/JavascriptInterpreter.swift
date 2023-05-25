@@ -24,11 +24,11 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     public var jsContext: JSContext!
     private let jsQueue: DispatchQueue
+    private let localStorage:LocalStorage!
     private var urlSession = JavascriptInterpreter.createURLSession()
     private let timeouts: JavascriptTimeouts
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
     private var webSocketInstances = NSPointerArray.weakObjects()
-    private let localStorage:LocalStorage!
     private let sessionStorage = SessionStorage()
     private var lastException: JSValue?
     
