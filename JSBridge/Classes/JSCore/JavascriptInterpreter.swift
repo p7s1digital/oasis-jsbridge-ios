@@ -28,7 +28,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     private let timeouts: JavascriptTimeouts
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
     private var webSocketInstances = NSPointerArray.weakObjects()
-    private let localStorage = LocalStorage()
+    private let localStorage:LocalStorage!
     private let sessionStorage = SessionStorage()
     private var lastException: JSValue?
     
@@ -37,10 +37,14 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
 
     // MARK: - Initializer
-
-    public init() {
+    
+    /// - Parameter namespace: A unique prefix string to differenciates different of instances
+    public init(namespace:String = "default") {
+        
         jsContext = JSContext()!
-
+        
+        localStorage = LocalStorage(with: namespace)
+        
         jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
         jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
 
@@ -59,6 +63,8 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         setupLoadURL()
         setupStorage()
     }
+    
+    // MARK: - Deinit
 
     deinit {
         Logger.debug("JSCoreJavascriptInterpreter - destroy()")

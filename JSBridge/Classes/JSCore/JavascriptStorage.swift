@@ -23,12 +23,25 @@ import JavaScriptCore
 /// `localStorage` implementation for JavaScriptCore.
 /// - SeeAlso: https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
 @objc class LocalStorage: NSObject, JavascriptStorageExport {
+    
     // MARK: Private properties
+    
+    private var userDefaults: UserDefaults
+    
+    private var namespace:String
 
-    private let keyPrefix = "jsBridge"
-
-    private var userDefaults: UserDefaults {
-        UserDefaults.standard
+    private var keyPrefix:String{
+        return namespace + "_jsBridge"
+    }
+        
+    /// Init
+    /// - Parameters:
+    ///   - namespace: A unique prefix string to differenciates between keys of different instances of LocalStorage (If required)
+    ///   - userDefaults: UserDefaults to store values 
+    init(with namespace:String,
+         userDefaults:UserDefaults = UserDefaults.standard) {
+        self.namespace = namespace
+        self.userDefaults = userDefaults
     }
 
     // MARK: JavascriptStorageExport
