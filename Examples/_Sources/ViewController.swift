@@ -60,9 +60,9 @@ class ViewController: UIViewController {
     }
 
     func createInterpreter() {
-        
+                
         JSBridgeConfiguration.add(logger: TestLogger())
-        interpreter = JavascriptInterpreter()
+        interpreter = JavascriptInterpreter(namespace: "fibonacciInterpreter")
 
         native = Native(label: resultLabel)
         interpreter.jsContext.setObject(native, forKeyedSubscript: "native" as NSString)

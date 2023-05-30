@@ -4,7 +4,7 @@ import JavaScriptCore
 
 final class SessionStorageTests: XCTestCase {
     func testSessionStorage() {
-        var interpreter = JavascriptInterpreter()
+        var interpreter = JavascriptInterpreter(namespace: "sessionStorageInterpreter")
 
         do {
             // setItem and check if getItem returns the same object
@@ -32,7 +32,7 @@ final class SessionStorageTests: XCTestCase {
         }
 
         // re-create interpreter with a new JSContext
-        interpreter = JavascriptInterpreter()
+        interpreter = JavascriptInterpreter(namespace: "sessionStorageInterpreter")
 
         do {
             // test if item from the previous interpreter is still available
