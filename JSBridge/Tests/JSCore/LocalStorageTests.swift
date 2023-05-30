@@ -5,7 +5,8 @@ import JavaScriptCore
 final class LocalStorageTests: XCTestCase {
     
     func testLocalStorage() {
-        var interpreter = JavascriptInterpreter()
+        
+        var interpreter = JavascriptInterpreter(namespace: "localStorageInterpreter")
 
         do {
             // remove item in case previous failed test didn't clear the storage
@@ -35,7 +36,7 @@ final class LocalStorageTests: XCTestCase {
         }
 
         // re-create interpreter with a new JSContext
-        interpreter = JavascriptInterpreter()
+        interpreter = JavascriptInterpreter(namespace: "localStorageInterpreter")
 
         do {
             // test if item from the previous interpreter is still available
@@ -64,8 +65,8 @@ final class LocalStorageTests: XCTestCase {
     
     
     func testLocalStorage_withMultipleInterpreters() {
-        // Interpreter with a namespace
-        var interpreter = JavascriptInterpreter(namespace: "test_namespace1")
+        // interpreter with a new JSContext & new namespace
+        var interpreter = JavascriptInterpreter(namespace: "localStorageInterpreter_1")
 
         do {
             // remove item in case previous failed test didn't clear the storage
@@ -94,8 +95,8 @@ final class LocalStorageTests: XCTestCase {
             wait(for: [expectation], timeout: 1)
         }
 
-        // re-create interpreter with a new JSContext & namespace
-        interpreter = JavascriptInterpreter(namespace: "test_namespace2")
+        // re-create interpreter with a new JSContext & new namespace
+        interpreter = JavascriptInterpreter(namespace: "localStorageInterpreter_2")
 
         do {
             // test if item from the previous interpreter is still available
@@ -127,23 +128,23 @@ final class LocalStorageTests: XCTestCase {
         let userDefaults = UserDefaults(suiteName: #file)!
         
         // create seperate instances of storages
-        let localStorage1 = LocalStorage(with: "test1", userDefaults: userDefaults)
-        let localStorage2 = LocalStorage(with: "test2", userDefaults: userDefaults)
+        let localInterpreterStorage1 = LocalStorage(with: "testInterpreter_1", userDefaults: userDefaults)
+        let localInterpreterStorage2 = LocalStorage(with: "testInterpreter_2", userDefaults: userDefaults)
         
         // set values against same key in both storages
-        localStorage1.setItem("key", "value1")
-        localStorage2.setItem("key", "value2")
+        localInterpreterStorage1.setItem("key", "value1")
+        localInterpreterStorage2.setItem("key", "value2")
         
         // test keys in both storages are not same
-        XCTAssertEqual(localStorage1.getItem("key"), "value1")
-        XCTAssertEqual(localStorage2.getItem("key"), "value2")
+        XCTAssertEqual(localInterpreterStorage1.getItem("key"), "value1")
+        XCTAssertEqual(localInterpreterStorage2.getItem("key"), "value2")
         
         // cleanup
         userDefaults.removePersistentDomain(forName: #file)
         
         // test if clean up worked
-        XCTAssertNil(localStorage1.getItem("key"))
-        XCTAssertNil(localStorage2.getItem("key"))
+        XCTAssertNil(localInterpreterStorage1.getItem("key"))
+        XCTAssertNil(localInterpreterStorage2.getItem("key"))
 
     }
 }

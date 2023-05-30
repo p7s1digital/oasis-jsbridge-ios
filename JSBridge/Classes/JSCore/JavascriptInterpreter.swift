@@ -18,10 +18,10 @@ import Foundation
 import JavaScriptCore
 
 open class JavascriptInterpreter: JavascriptInterpreterProtocol {
-
+    
     private static let JSQUEUE_LABEL = "JSBridge.JSSerialQueue"
     private static let jsQueueKey = DispatchSpecificKey<String>()
-
+    
     public var jsContext: JSContext!
     private let jsQueue: DispatchQueue
     private let localStorage:LocalStorage!
@@ -35,11 +35,19 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     enum JSError: Error {
         case runtimeError(String)
     }
-
+    
     // MARK: - Initializer
     
-    /// - Parameter namespace: A unique prefix string to differenciates different of instances
-    public init(namespace:String = "default") {
+    ///
+    /// Creates new instance with `LocalStorage` and `SessionStorage`.
+    ///
+    /// - Parameters:
+    ///   - namespace: A unique prefix string to differenciates betwen different instances.
+    ///   If you're using multiple instances of '`JavascriptInterpreter`
+    ///   and want to have seperate storage for each of them
+    ///   please provide a unique prefix for all of them.
+    ///
+    public init(namespace:String) {
         
         jsContext = JSContext()!
         
@@ -47,9 +55,9 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         
         jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
         jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
-
+        
         timeouts = JavascriptTimeouts(queue: jsQueue)
-
+        
         setupExceptionHandling()
         setupGlobal()
         setupConsole()
@@ -65,85 +73,85 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     }
     
     // MARK: - Deinit
-
+    
     deinit {
         Logger.debug("JSCoreJavascriptInterpreter - destroy()")
-
+        
         xmlHttpRequestInstances.allObjects.forEach({ ($0 as? XMLHttpRequest)?.clearJSValues() })
         xmlHttpRequestInstances = NSPointerArray.weakObjects()
         urlSession.reset { }
-
+        
         if #available(iOS 13, tvOS 13, *) {
             webSocketInstances.allObjects.forEach({ ($0 as? WebSocket)?.clear() })
             webSocketInstances = NSPointerArray.weakObjects()
         }
-
+        
         timeouts.clearAll()
         jsContext = nil
     }
-
+    
     // MARK: - JavascriptInterpreterProtocol
-
+    
     // bundleIdentifier for JSBridge: de.probiensat1digital.JSBridge
     public func evaluateLocalFile(bundle: Bundle, filename: String, cb: (() -> Void)?) {
         Logger.debug("JSCoreJavascriptInterpreter - evaluateLocalFile(\(filename))")
-
+        
         guard filename.hasSuffix(".js") && filename.count >= 4 else {
             Logger.error("JS file expected!")
             cb?()
             return
         }
-
+        
         if filename.hasSuffix(".max.js") {
             let error = JSBridgeError(type: .jsError, message: "Error: .max.js file should not be directly set, use .js in debug mode instead!")
             Logger.error(error.message)
             cb?()
             return
         }
-
+        
         let basename = String(filename.prefix(filename.count - 3))
         var tryJsPath: String?
-
-        #if DEBUG
+        
+#if DEBUG
         // When debugging, try with a .max.js file first
         let basenameMax = basename + ".max"
         tryJsPath = bundle.path(forResource: basenameMax, ofType: "js")
         if tryJsPath != nil {
             Logger.debug("\(basenameMax).js found in debug mode and will be used instead of \(filename)")
         }
-        #endif
-
+#endif
+        
         if tryJsPath == nil {
             // In release or when the .max.js file does not exist, directly use the given .js file
             tryJsPath = bundle.path(forResource: basename, ofType: "js")
         }
-
+        
         guard let jsPath = tryJsPath else {
             Logger.error("Unable to read resource files for \(basename).js.")
             cb?()
             return
         }
-
+        
         runOnJSQueue { [weak self] in
             do {
                 let jsSource = try String(contentsOfFile: jsPath, encoding: String.Encoding.utf8)
                 _ = self?.jsContext.evaluateScript(jsSource, withSourceURL: URL(string: jsPath))
-
+                
             } catch let error {
                 Logger.error("Error while processing script file: \(error)")
             }
-
+            
             cb?()
         }
     }
-
+    
     public func evaluateString(js: String, cb: ((_: JSValue?, _: JSBridgeError?) -> Void)?) {
         runOnJSQueue { [weak self] in
             guard let self = self else { return }
-
+            
             self.lastException = nil
             let ret = self.jsContext.evaluateScript(js)
-
+            
             // Making the call synchronous to make sure that the order is preserved
             if let keepCallback = cb {
                 self.runOnMainQueue {
@@ -157,48 +165,48 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             }
         }
     }
-
+    
     @discardableResult
     public func evaluateScript(_ script: String) throws -> JSValue? {
         var result: JSValue?
-
+        
         runOnJSQueue(synchronous: true) { [self] in
             lastException = nil
             result = jsContext.evaluateScript(script)
         }
-
+        
         if let lastException {
             throw JSBridgeError(type: .jsEvaluationFailed, message: lastException.toString())
         }
-
+        
         return result
     }
     
     // MARK: - calling JS functions
-
+    
     open func call(object: JSValue?,
-              functionName: String,
-              arguments: [Any],
-              completion: @escaping (JSValue?) -> Void) {
-
+                   functionName: String,
+                   arguments: [Any],
+                   completion: @escaping (JSValue?) -> Void) {
+        
         runOnJSQueue { [weak self] in
-
+            
             guard let strongSelf = self else { return }
             let keepCompletion = completion
-
+            
             let (object, function) = strongSelf.javascriptFunction(object: object, name: functionName)
-
+            
             let value = object.invokeMethod(function, withArguments: strongSelf.converted(arguments))
             DispatchQueue.main.async {
                 keepCompletion(value)
             }
         }
     }
-
+    
     open func callSynchronously(object: JSValue?,
-              functionName: String,
-              arguments: [Any]) -> JSValue {
-
+                                functionName: String,
+                                arguments: [Any]) -> JSValue {
+        
         var result: JSValue!
         let semaphore = DispatchSemaphore(value: 0)
         runOnJSQueue {
@@ -210,14 +218,14 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         semaphore.wait()
         return result
     }
-
+    
     public func callWithCallback<T: Codable>(object: JSValue?,
-                                      functionName: String,
-                                      arguments: [Any],
-                                      completion: @escaping (T?) -> Void) {
-
+                                             functionName: String,
+                                             arguments: [Any],
+                                             completion: @escaping (T?) -> Void) {
+        
         call(object: object, functionName: functionName, arguments: converted(arguments)) { (jsValue) in
-
+            
             guard let jsValue = jsValue else {
                 completion(nil)
                 return
@@ -226,18 +234,18 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             completion(object)
         }
     }
-
+    
     public func callWithPromise<T: Codable>(object: JSValue?,
-                                     functionName: String,
-                                     arguments: [Any]) -> JavascriptPromise<T> {
-
+                                            functionName: String,
+                                            arguments: [Any]) -> JavascriptPromise<T> {
+        
         let promise = JavascriptPromise<T>()
         runOnJSQueue(synchronous: true) { [weak self] in
-
+            
             guard let strongSelf = self else { return }
-
+            
             let (object, function) = strongSelf.javascriptFunction(object: object, name: functionName)
-
+            
             guard let value = object.invokeMethod(function, withArguments: strongSelf.converted(arguments)) else {
                 promise.fail()
                 return
@@ -246,18 +254,18 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
         return promise
     }
-
+    
     public func callWithValuePromise(object: JSValue?,
-                              functionName: String,
-                              arguments: [Any]) -> JavascriptValuePromise {
-
+                                     functionName: String,
+                                     arguments: [Any]) -> JavascriptValuePromise {
+        
         let promise = JavascriptValuePromise()
         runOnJSQueue(synchronous: true) { [weak self] in
-
+            
             guard let strongSelf = self else { return }
-
+            
             let (object, function) = strongSelf.javascriptFunction(object: object, name: functionName)
-
+            
             guard let value = object.invokeMethod(function, withArguments: strongSelf.converted(arguments)) else {
                 promise.fail()
                 return
@@ -266,48 +274,48 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
         return promise
     }
-
+    
     public func setObject(_ object: Any!, forKey key: String) {
         jsContext.setObject(object, forKeyedSubscript: key as NSString)
     }
-
+    
     public func isFunction(object: JSValue?,
                            functionName: String,
                            completion: @escaping (Bool) -> Void) {
-
+        
         runOnJSQueue {
             let (value, name) = self.javascriptFunction(object: object, name: functionName)
             if value.isUndefined {
                 completion(false)
                 return
             }
-
+            
             guard let functionValue = value.objectForKeyedSubscript(name) else {
                 completion(false)
                 return
             }
-
+            
             let isDefined = { (value: JSValue, key: String) in
                 return !(value.objectForKeyedSubscript(key)?.isUndefined ?? true)
             }
-
+            
             let isFunction = (!functionValue.isUndefined) &&
-                                isDefined(functionValue, "apply") &&
-                                isDefined(functionValue, "call")
+            isDefined(functionValue, "apply") &&
+            isDefined(functionValue, "call")
             completion(isFunction)
         }
     }
-
+    
     private func javascriptFunction(object: JSValue?, name: String) -> (JSValue, String) {
-
+        
         var returnObject: JSValue = object ?? jsContext.globalObject
         var nextObject: JSValue = returnObject
         var returnName: String!
         for keyInContext in name.split(separator: ".") {
-
+            
             returnObject = nextObject
             returnName = String(keyInContext)
-
+            
             if let object = nextObject.objectForKeyedSubscript(keyInContext), !object.isUndefined {
                 nextObject = object
             } else {
@@ -318,7 +326,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
         return (returnObject, returnName)
     }
-
+    
     // Closures can be passed as argument as well, but for an automatic conversion
     // from JSValue to Codable objects, we need a wrapper class to perform the typed conversion.
     private func converted(_ arguments: [Any]) -> [Any] {
@@ -335,7 +343,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
         return converted
     }
-
+    
     /**
      * Find an object in the JSContext by traversing the name by its keys.
      * Please note that this method is supposed to be called from
@@ -343,20 +351,20 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
      * guaranteed!
      */
     private func javascriptObject(name: String) -> JSValue? {
-
+        
         if let object = jsContext.globalObject.objectForKeyedSubscript(name), !object.isUndefined {
             return object
         } else {
             return nil
         }
     }
-
+    
     // MARK: - Private methods
-
+    
     func isRunningOnJSQueue() -> Bool {
         return DispatchQueue.getSpecific(key: JavascriptInterpreter.jsQueueKey) == JavascriptInterpreter.JSQUEUE_LABEL
     }
-
+    
     func runOnJSQueue(synchronous: Bool = false, _ block: @escaping () -> Void) {
         if isRunningOnJSQueue() {
             block()
@@ -378,11 +386,11 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             }
         }
     }
-
+    
     private func setupExceptionHandling() {
         jsContext.exceptionHandler = { [weak self] context, exception in
             self?.lastException = exception
-
+            
             if let stacktrace = exception?.objectForKeyedSubscript("stack") {
                 Logger.error("JS ERROR: \(exception!)\n\(stacktrace)")
             } else if let exception = exception {
@@ -392,14 +400,14 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             }
         }
     }
-
+    
     private func setupGlobal() {
         jsContext.evaluateScript("""
             var global = this;
             var window = this;
         """)
     }
-
+    
     private func setupConsole() {
         consoleHelper(methodName: "log", level: .debug)
         consoleHelper(methodName: "trace", level: .debug)
@@ -407,20 +415,20 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         consoleHelper(methodName: "warn", level: .warning)
         consoleHelper(methodName: "error", level: .error)
         consoleHelper(methodName: "dir", level: .debug)
-
+        
         // console.assert(condition, message)
         let consoleAssert: @convention(block) (Bool) -> Void = { condition in
             if condition == true {
                 return
             }
-
+            
             let str = "JS ASSERTION FAILED: " + JSContext.currentArguments()!.suffix(from: 1).map { "\($0)" }.joined(separator: " ")
             Logger.error(str)
         }
         let console = jsContext.objectForKeyedSubscript("console")
         console?.setObject(unsafeBitCast(consoleAssert, to: AnyObject.self), forKeyedSubscript: "assert" as NSString)
     }
-
+    
     private func consoleHelper(methodName: String, level: JSBridgeLoggingLevel) {
         let consoleFunc: @convention(block) () -> Void = {
             let message = JSContext.currentArguments()!.map { "\($0)"}.joined(separator: " ")
@@ -429,9 +437,9 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         let console = jsContext.objectForKeyedSubscript("console")
         console?.setObject(unsafeBitCast(consoleFunc, to: AnyObject.self), forKeyedSubscript: methodName as NSString)
     }
-
+    
     // MARK: - Promise
-
+    
     private func setupNativePromise() {
         jsContext.evaluateScript("""
             jsBridgeCreatePromiseWrapper = () => {
@@ -444,7 +452,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             }
         """)
     }
-
+    
     private func setupStringify() {
         jsContext.evaluateScript("""
             function __jsBridge__stringify(err) {
@@ -456,24 +464,24 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
                     return acc;
                   }, {});
                 }
-
+        
                 return value;
               };
-
+        
               return JSON.stringify(err, replaceErrors);
             }
         """)
     }
-
+    
     // MARK: - Storage
-
+    
     func setupStorage() {
         jsContext.setObject(localStorage, forKeyedSubscript: "localStorage" as NSString)
         jsContext.setObject(sessionStorage, forKeyedSubscript: "sessionStorage" as NSString)
     }
-
+    
     // MARK: - Timeout and Interval
-
+    
     private func setupTimeoutAndInterval() {
         let native = "__jsBridge__timeouts"
         jsContext.setObject(timeouts, forKeyedSubscript: native as NSString)
@@ -495,9 +503,9 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             };
         """)
     }
-
+    
     // MARK: - XMLHttpRequest
-
+    
     private static func createURLSession() -> URLSession {
         // Disable cache for now
         let config = URLSessionConfiguration.default
@@ -505,7 +513,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         config.urlCache = nil
         return URLSession(configuration: config)
     }
-
+    
     private func setupXMLHttpRequest() {
         XMLHttpRequest.configure(urlSession: urlSession, jsQueue: jsQueue, context: jsContext, logger: {
             Logger.verbose("XHR: \($0)")
@@ -525,36 +533,36 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             strongSelf.webSocketInstances.addPointer(pointer)
         }
     }
-
+    
     private func setupLoadURL() {
         // loadUrl(url, cb)
         let loadUrl: @convention(block) (String, JSValue?) -> Void = { [weak self] urlString, v in
             Logger.debug("Native loadUrl(\(urlString))")
-
+            
             guard let strongSelf = self else { return }
-
+            
             guard let url = URL(string: urlString) else {
                 Logger.error("Invalid URL: \(urlString)")
                 return
             }
-
+            
             let task = strongSelf.urlSession.dataTask(with: url) { [weak self] (data, _, error) in
                 guard let strongSelf = self else {
                     return
                 }
-
+                
                 strongSelf.jsQueue.async {
                     if let error = error {
                         Logger.error(error.localizedDescription)
                         _ = v?.call(withArguments: ["ERROR"])
                         return
                     }
-
+                    
                     guard let data = data else {
                         _ = v?.call(withArguments: ["EMPTY DATA"])
                         return
                     }
-
+                    
                     let str = String(data: data, encoding: .utf8)!
                     _ = strongSelf.jsContext.evaluateScript(str, withSourceURL: url)
                     _ = v?.call(withArguments: [])

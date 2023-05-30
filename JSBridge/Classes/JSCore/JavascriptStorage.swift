@@ -36,7 +36,7 @@ import JavaScriptCore
         
     /// Init
     /// - Parameters:
-    ///   - namespace: A unique prefix string to differenciates between keys of different instances of LocalStorage (If required)
+    ///   - namespace: A unique prefix string to differenciates between keys of different instances of LocalStorage.
     ///   - userDefaults: UserDefaults to store values 
     init(with namespace:String,
          userDefaults:UserDefaults = UserDefaults.standard) {
