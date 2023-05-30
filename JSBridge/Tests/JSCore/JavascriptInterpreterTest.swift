@@ -83,7 +83,7 @@ class JavascriptInterpreterTest: XCTestCase {
     }
 
     func createJavascriptInterpreter() -> JavascriptInterpreter {
-        let interpreter = JavascriptInterpreter()
+        let interpreter = JavascriptInterpreter(namespace: "testInterpreter")
         interpreter.jsContext.setObject(native, forKeyedSubscript: "native" as NSString)
         return interpreter
     }
@@ -201,7 +201,7 @@ class JavascriptInterpreterTest: XCTestCase {
 
     func testSetObject() {
         // GIVEN
-        let javascriptInterpreter = JavascriptInterpreter()
+        let javascriptInterpreter = JavascriptInterpreter(namespace: "testInterpreter")
 
         // WHEN
         let getName: @convention(block) (String) -> String? = { key in
@@ -226,7 +226,7 @@ class JavascriptInterpreterTest: XCTestCase {
     }
 
     func testIsFunction() {
-        let javascriptInterpreter = JavascriptInterpreter()
+        let javascriptInterpreter = JavascriptInterpreter(namespace: "testInterpreter")
         javascriptInterpreter.evaluateString(js: """
             var test = {
               innerTest: {
@@ -273,7 +273,7 @@ class JavascriptInterpreterTest: XCTestCase {
     }
 
     func testCallbackCall() {
-        let javascriptInterpreter = JavascriptInterpreter()
+        let javascriptInterpreter = JavascriptInterpreter(namespace: "testInterpreter")
         javascriptInterpreter.evaluateString(js: """
             var testObject = {
               testMethod: function(firstname, lastname, callback) {
@@ -313,7 +313,7 @@ class JavascriptInterpreterTest: XCTestCase {
     }
 
     func testPromise() {
-        let js = JavascriptInterpreter()
+        let js = JavascriptInterpreter(namespace: "testInterpreter")
         js.evaluateString(js: """
             function getDelayedMessage() {
               return new Promise(function(resolve, reject) {
@@ -344,7 +344,7 @@ class JavascriptInterpreterTest: XCTestCase {
         waitForExpectations(timeout: 1)
     }
     func testFastResolvePromise() {
-        let js = JavascriptInterpreter()
+        let js = JavascriptInterpreter(namespace: "testInterpreter")
         js.evaluateString(js: """
             function getDelayedMessage() {
               return new Promise(function(resolve, reject) {
@@ -368,7 +368,7 @@ class JavascriptInterpreterTest: XCTestCase {
     }
 
     func testFailingPromise() {
-        let js = JavascriptInterpreter()
+        let js = JavascriptInterpreter(namespace: "testInterpreter")
         js.evaluateString(js: """
             function getDelayedMessage() {
               return new Promise(function(resolve, reject) {
@@ -397,7 +397,7 @@ class JavascriptInterpreterTest: XCTestCase {
         let toUppercase: @convention(block) (String) -> String = { $0.uppercased() }
         let expectation = self.expectation(description: "callback")
 
-        let interpreter = JavascriptInterpreter()
+        let interpreter = JavascriptInterpreter(namespace: "testInterpreter")
         interpreter.setObject(toUppercase, forKey: "toUppercase")
         interpreter.evaluateString(js: """
             var testObject = {
@@ -418,7 +418,7 @@ class JavascriptInterpreterTest: XCTestCase {
     }
 
     func testNativePromise() {
-        let js = JavascriptInterpreter()
+        let js = JavascriptInterpreter(namespace: "testInterpreter")
         js.evaluateString(js: """
             addScheduler = (scheduler) => {
               setTimeout( () => {
