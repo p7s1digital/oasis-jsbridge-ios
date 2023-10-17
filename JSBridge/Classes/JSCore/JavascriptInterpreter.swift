@@ -22,9 +22,9 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     private static let JSQUEUE_LABEL = "JSBridge.JSSerialQueue"
     private static let jsQueueKey = DispatchSpecificKey<String>()
     
-    public var jsContext: JSContext!
+    public let jsContext: JSContext!
     private let jsQueue: DispatchQueue
-    private let localStorage:LocalStorage!
+    private let localStorage: LocalStorage!
     private var urlSession = JavascriptInterpreter.createURLSession()
     private let timeouts: JavascriptTimeouts
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
@@ -48,8 +48,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     ///   please provide a unique prefix for all of them.
     ///
     public init(namespace:String) {
-        
-        jsContext = JSContext()!
+        jsContext = JSContext()
         
         localStorage = LocalStorage(with: namespace)
         
@@ -87,7 +86,6 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         }
         
         timeouts.clearAll()
-        jsContext = nil
     }
     
     // MARK: - JavascriptInterpreterProtocol
@@ -522,15 +520,14 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     
     @available(iOS 13, tvOS 13, *)
     private func setupWebSocket() {
-        WebSocket.globalInit(withJSQueue: jsQueue)
-        WebSocket.extend(jsContext) { [weak self] instance in
-            guard let strongSelf = self else {
+        WebSocket.polyfill(jsContext, jsQueue: jsQueue) { [weak self] instance in
+            guard let self else {
                 instance.clear()
                 return
             }
-            
+
             let pointer = Unmanaged.passUnretained(instance).toOpaque()
-            strongSelf.webSocketInstances.addPointer(pointer)
+            self.webSocketInstances.addPointer(pointer)
         }
     }
     

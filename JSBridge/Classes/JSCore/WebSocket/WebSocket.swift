@@ -37,9 +37,6 @@ enum WebSocketState: Int {
 
 @available(iOS 13, tvOS 13, *)
 @objc class WebSocket: NSObject, WebSocketProtocol {
-    
-    private static weak var jsQueue: DispatchQueue!
-    
     var onclose: JSValue?
     var onerror: JSValue?
     var onmessage: JSValue?
@@ -48,29 +45,29 @@ enum WebSocketState: Int {
     private var _readyState: WebSocketState = .connecting
     var readyState: Int { return _readyState.rawValue }
     
+    private weak var jsQueue: DispatchQueue?
     private var urlSession: URLSession?
     private var socketTask: URLSessionWebSocketTask?
-    
-    static func globalInit(withJSQueue queue: DispatchQueue) {
-        jsQueue = queue
-    }
 
-    static func extend(_ jsContext: JSContext, onNewInstance: @escaping (WebSocket) -> Void) {
+    static func polyfill(_ jsContext: JSContext, jsQueue: DispatchQueue, onNewInstance: @escaping (WebSocket) -> Void) {
         jsQueue.async {
-            let constr: @convention(block) (String) -> WebSocket? = { (_ urlString: String) in
-                guard let instance = try? WebSocket(with: urlString) else {
-                    return nil;
+            let constructor: @convention(block) (String) -> WebSocket? = { urlString in
+                guard let instance = try? WebSocket(with: urlString, jsQueue: jsQueue) else {
+                    return nil
                 }
                 onNewInstance(instance)
                 return instance
             }
-            
-            jsContext.setObject(constr, forKeyedSubscript: "WebSocket" as NSString)
+
+            jsContext.setObject(constructor, forKeyedSubscript: "WebSocket" as NSString)
         }
     }
     
-    init(with urlString: String) throws {
+    init(with urlString: String, jsQueue: DispatchQueue) throws {
+        self.jsQueue = jsQueue
+
         super.init()
+
         guard let url = URL(string: urlString) else { throw URLError(URLError.Code.badURL) }
         urlSession = URLSession(configuration: URLSessionConfiguration.default,
                                 delegate: self,
@@ -82,7 +79,7 @@ enum WebSocketState: Int {
     }
     
     private func onJSQueue(_ block: @escaping () -> Void) {
-        WebSocket.jsQueue.async {
+        jsQueue?.async {
             block()
         }
     }
