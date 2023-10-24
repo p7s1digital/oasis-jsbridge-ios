@@ -46,8 +46,11 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     ///   If you're using multiple instances of '`JavascriptInterpreter`
     ///   and want to have seperate storage for each of them
     ///   please provide a unique prefix for all of them.
+    ///   - testUrlSession: URL session used for testing purposes.
+    ///   Pass it only if you need to test XMLHttpRequest.
+    ///   Default value is `nil`.
     ///
-    public init(namespace:String) {
+    public init(namespace: String, testUrlSession: URLSession? = nil) {
         jsContext = JSContext()
         
         localStorage = LocalStorage(with: namespace)
@@ -63,7 +66,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         setupNativePromise()
         setupStringify()
         setupTimeoutAndInterval()
-        setupXMLHttpRequest()
+        setupXMLHttpRequest(testUrlSession: testUrlSession)
         if #available(iOS 13, tvOS 13, *) {
             setupWebSocket()
         }
@@ -512,8 +515,9 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         return URLSession(configuration: config)
     }
     
-    private func setupXMLHttpRequest() {
-        XMLHttpRequest.configure(urlSession: urlSession, jsQueue: jsQueue, context: jsContext, logger: {
+    private func setupXMLHttpRequest(testUrlSession: URLSession? = nil) {
+        let sesson = testUrlSession ?? urlSession
+        XMLHttpRequest.configure(urlSession: sesson, jsQueue: jsQueue, context: jsContext, logger: {
             Logger.verbose("XHR: \($0)")
         })
     }

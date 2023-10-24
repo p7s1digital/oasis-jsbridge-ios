@@ -1,6 +1,5 @@
 import XCTest
 import JavaScriptCore
-import OHHTTPStubs
 @testable import OasisJSBridge
 
 final class XMLHttpRequestTests: XCTestCase {
@@ -11,9 +10,9 @@ final class XMLHttpRequestTests: XCTestCase {
     private var native: Native!
 
     override func setUpWithError() throws {
-        interpreter = JavascriptInterpreter(namespace: "httpReqInterpreter")
+        interpreter = JavascriptInterpreter(namespace: "httpReqInterpreter", testUrlSession: testSession)
         native = Native()
-
+        
         interpreter.jsContext.setObject(native, forKeyedSubscript: "native" as NSString)
     }
 
@@ -322,8 +321,9 @@ extension XMLHttpRequestTests {
     func testEvents_properties_openAbort() {
         // GIVEN
         let url = "https://test.url/api/request"
+        HTTPStubs.startInterceptingRequests()
         stubRequests(url: url) {
-            HTTPStubsResponse(data: Data(), statusCode: 200, headers: nil)
+            HTTPResponseStub(data: Data(), statusCode: 200, headers: nil)
         }
 
         let expectedEvents = """
@@ -350,15 +350,18 @@ extension XMLHttpRequestTests {
 
         // THEN
         XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
+        HTTPStubs.stopInterceptingRequests()
     }
 
     func testEvents_properties_openSend() {
         // GIVEN
         let url = "https://test.url/api/request"
+        
+        HTTPStubs.startInterceptingRequests()
         stubRequests(url: url) {
-            HTTPStubsResponse(data: Data(), statusCode: 200, headers: nil)
+            HTTPResponseStub(data: Data(), statusCode: 200, headers: nil)
         }
-
+        
         let expectedEvents = """
         readystatechange 1
         loadstart 1
@@ -367,7 +370,7 @@ extension XMLHttpRequestTests {
         readystatechange 4
         load 4
         """.components(separatedBy: "\n")
-
+        
         // WHEN
         let expectation = self.expectation(description: "Events received")
         expectation.expectedFulfillmentCount = expectedEvents.count
@@ -386,6 +389,7 @@ extension XMLHttpRequestTests {
 
         // THEN
         XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
+        HTTPStubs.stopInterceptingRequests()
     }
 
     func testEvents_properties_openSend_brokenURL() {
@@ -420,8 +424,9 @@ extension XMLHttpRequestTests {
     func testEvents_properties_openSendAbort() {
         // GIVEN
         let url = "https://test.url/api/request"
+        HTTPStubs.startInterceptingRequests()
         stubRequests(url: url) {
-            HTTPStubsResponse(data: Data(), statusCode: 200, headers: nil)
+            HTTPResponseStub(data: Data(), statusCode: 200, headers: nil)
         }
 
         let expectedEvents = """
@@ -452,13 +457,14 @@ extension XMLHttpRequestTests {
 
         // THEN
         XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
+        HTTPStubs.stopInterceptingRequests()
     }
 
     func testEvents_properties_openSendError() {
         // GIVEN
         let url = "https://test.url/api/request"
         stubRequests(url: url) {
-            HTTPStubsResponse(error: URLError(.resourceUnavailable))
+            HTTPResponseStub(statusCode: 500, error: URLError(.resourceUnavailable))
         }
 
         let expectedEvents = """
@@ -486,6 +492,7 @@ extension XMLHttpRequestTests {
 
         // THEN
         XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
+        HTTPStubs.stopInterceptingRequests()
     }
 
     func testEvents_properties_send() {
@@ -598,7 +605,7 @@ extension XMLHttpRequestTests {
         // GIVEN
         let url = "https://test.url/api/request"
         stubRequests(url: url) {
-            HTTPStubsResponse(data: Data(), statusCode: 200, headers: nil)
+            HTTPResponseStub(data: Data(), statusCode: 200)
         }
 
         let expectedEvents = """
@@ -625,13 +632,14 @@ extension XMLHttpRequestTests {
 
         // THEN
         XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
+        HTTPStubs.stopInterceptingRequests()
     }
 
     func testEvents_listeners_openSend() {
         // GIVEN
         let url = "https://test.url/api/request"
         stubRequests(url: url) {
-            HTTPStubsResponse(data: Data(), statusCode: 200, headers: nil)
+            HTTPResponseStub(data: Data(), statusCode: 200)
         }
 
         let expectedEvents = """
@@ -663,6 +671,7 @@ extension XMLHttpRequestTests {
 
         // THEN
         XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
+        HTTPStubs.stopInterceptingRequests()
     }
 
     func testEvents_listeners_openSend_brokenURL() {
@@ -699,7 +708,7 @@ extension XMLHttpRequestTests {
         // GIVEN
         let url = "https://test.url/api/request"
         stubRequests(url: url) {
-            HTTPStubsResponse(data: Data(), statusCode: 200, headers: nil)
+            HTTPResponseStub(data: Data(), statusCode: 200)
         }
 
         let expectedEvents = """
@@ -731,13 +740,14 @@ extension XMLHttpRequestTests {
 
         // THEN
         XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
+        HTTPStubs.stopInterceptingRequests()
     }
 
     func testEvents_listeners_openSendError() {
         // GIVEN
         let url = "https://test.url/api/request"
         stubRequests(url: url) {
-            HTTPStubsResponse(error: URLError(.resourceUnavailable))
+            HTTPResponseStub(statusCode: 500, error: URLError(.resourceUnavailable))
         }
 
         let expectedEvents = """
@@ -766,6 +776,7 @@ extension XMLHttpRequestTests {
 
         // THEN
         XCTAssertEqual(native.receivedEvents.map(\.name), expectedEvents)
+        HTTPStubs.stopInterceptingRequests()
     }
 
     func testEvents_listeners_send() {
