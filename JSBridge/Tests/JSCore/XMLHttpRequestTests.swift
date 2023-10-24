@@ -9,6 +9,14 @@ final class XMLHttpRequestTests: XCTestCase {
     private var interpreter: JavascriptInterpreter!
     private var native: Native!
 
+    var testSession: URLSession {
+        let configuration = URLSessionConfiguration.default
+        configuration.protocolClasses = [
+            HTTPStubs.self
+        ]
+        return URLSession(configuration: configuration)
+    }
+    
     override func setUpWithError() throws {
         interpreter = JavascriptInterpreter(namespace: "httpReqInterpreter", testUrlSession: testSession)
         native = Native()

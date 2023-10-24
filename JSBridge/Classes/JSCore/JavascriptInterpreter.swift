@@ -25,7 +25,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     public let jsContext: JSContext!
     private let jsQueue: DispatchQueue
     private let localStorage: LocalStorage!
-    private var urlSession = JavascriptInterpreter.createURLSession()
+    private let urlSession: URLSession!
     private let timeouts: JavascriptTimeouts
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
     private var webSocketInstances = NSPointerArray.weakObjects()
@@ -46,27 +46,41 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     ///   If you're using multiple instances of '`JavascriptInterpreter`
     ///   and want to have seperate storage for each of them
     ///   please provide a unique prefix for all of them.
-    ///   - testUrlSession: URL session used for testing purposes.
-    ///   Pass it only if you need to test XMLHttpRequest.
-    ///   Default value is `nil`.
-    ///
-    public init(namespace: String, testUrlSession: URLSession? = nil) {
+    public init(namespace: String) {
         jsContext = JSContext()
-        
         localStorage = LocalStorage(with: namespace)
         
         jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
         jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
         
         timeouts = JavascriptTimeouts(queue: jsQueue)
+        urlSession = JavascriptInterpreter.createURLSession()
         
+        setup()
+    }
+    
+    /// Test initialiser
+    init(namespace: String, testUrlSession: URLSession) {
+        jsContext = JSContext()
+        localStorage = LocalStorage(with: namespace)
+        
+        jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
+        jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
+        
+        timeouts = JavascriptTimeouts(queue: jsQueue)
+        urlSession = testUrlSession
+        
+        setup()
+    }
+    
+    func setup() {
         setupExceptionHandling()
         setupGlobal()
         setupConsole()
         setupNativePromise()
         setupStringify()
         setupTimeoutAndInterval()
-        setupXMLHttpRequest(testUrlSession: testUrlSession)
+        setupXMLHttpRequest()
         if #available(iOS 13, tvOS 13, *) {
             setupWebSocket()
         }
@@ -515,9 +529,8 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         return URLSession(configuration: config)
     }
     
-    private func setupXMLHttpRequest(testUrlSession: URLSession? = nil) {
-        let sesson = testUrlSession ?? urlSession
-        XMLHttpRequest.configure(urlSession: sesson, jsQueue: jsQueue, context: jsContext, logger: {
+    private func setupXMLHttpRequest() {
+        XMLHttpRequest.configure(urlSession: urlSession, jsQueue: jsQueue, context: jsContext, logger: {
             Logger.verbose("XHR: \($0)")
         })
     }

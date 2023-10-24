@@ -19,11 +19,10 @@ class HTTPStubs: URLProtocol {
 
     private struct Stub {
         let response: () -> HTTPResponseStub?
-        let error: Error?
     }
 
-    static func stub(url: URL, response: @escaping () -> HTTPResponseStub?, error: Error?) {
-        stubs[url] = Stub(response: response, error: error)
+    static func stub(url: URL, response: @escaping () -> HTTPResponseStub?) {
+        stubs[url] = Stub(response: response)
     }
 
     static func startInterceptingRequests() {
@@ -69,8 +68,9 @@ class HTTPStubs: URLProtocol {
             if let error = response.error {
                 client?.urlProtocol(self, didFailWithError: error)
             } else {
+                let httpResponse = HTTPURLResponse(url: url, statusCode: response.statusCode, httpVersion: nil, headerFields: response.headers)!
                 client?.urlProtocol(self, didLoad: response.data)
-                client?.urlProtocol(self, didReceive: HTTPURLResponse(), cacheStoragePolicy: .notAllowed)
+                client?.urlProtocol(self, didReceive: httpResponse, cacheStoragePolicy: .notAllowed)
             }
         }
         client?.urlProtocolDidFinishLoading(self)
