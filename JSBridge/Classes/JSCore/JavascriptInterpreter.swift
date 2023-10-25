@@ -22,10 +22,10 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     private static let JSQUEUE_LABEL = "JSBridge.JSSerialQueue"
     private static let jsQueueKey = DispatchSpecificKey<String>()
     
-    public let jsContext: JSContext!
+    public let jsContext: JSContext
     private let jsQueue: DispatchQueue
-    private let localStorage: LocalStorage!
-    private let urlSession: URLSession!
+    private let localStorage: LocalStorage
+    private let urlSession: URLSession
     private let timeouts: JavascriptTimeouts
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
     private var webSocketInstances = NSPointerArray.weakObjects()
