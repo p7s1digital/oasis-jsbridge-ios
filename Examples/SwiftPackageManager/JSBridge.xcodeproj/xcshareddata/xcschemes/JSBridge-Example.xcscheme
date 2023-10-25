@@ -55,10 +55,10 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "607FACE41AFB9204008FA782"
-               BuildableName = "JSBridge_Tests.xctest"
-               BlueprintName = "JSBridge_Tests"
-               ReferencedContainer = "container:JSBridge.xcodeproj">
+               BlueprintIdentifier = "OasisJSBridgeTests"
+               BuildableName = "OasisJSBridgeTests"
+               BlueprintName = "OasisJSBridgeTests"
+               ReferencedContainer = "container:../..">
             </BuildableReference>
          </TestableReference>
       </Testables>
