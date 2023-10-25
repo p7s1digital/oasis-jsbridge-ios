@@ -1,16 +1,14 @@
 import Foundation
 
 class HTTPResponseStub {
+    var data: Data
     var statusCode: Int
     var headers: [String : String]?
-    var data: Data
-    var error: Error?
     
-    init?(data: Data = Data(), statusCode: Int, headers: [String : String]? = nil, error: Error? = nil) {
+    init(data: Data = Data(), statusCode: Int, headers: [String : String]? = nil) {
         self.data = data
         self.statusCode = statusCode
         self.headers = headers
-        self.error = error
     }
 }
 
@@ -18,11 +16,12 @@ class HTTPStubs: URLProtocol {
     private static var stubs = [URL: Stub]()
 
     private struct Stub {
-        let response: () -> HTTPResponseStub?
+        let response: (() -> HTTPResponseStub)?
+        let error: Error?
     }
 
-    static func stub(url: URL, response: @escaping () -> HTTPResponseStub?) {
-        stubs[url] = Stub(response: response)
+    static func stub(url: URL, error: Error? = nil, response: (() -> HTTPResponseStub)?) {
+        stubs[url] = Stub(response: response, error: error)
     }
 
     static func startInterceptingRequests() {
@@ -64,14 +63,12 @@ class HTTPStubs: URLProtocol {
         guard let url = request.url, let stub = HTTPStubs.stubs[url] else {
             return
         }
-        if let response = stub.response() {
-            if let error = response.error {
-                client?.urlProtocol(self, didFailWithError: error)
-            } else {
-                let httpResponse = HTTPURLResponse(url: url, statusCode: response.statusCode, httpVersion: nil, headerFields: response.headers)!
-                client?.urlProtocol(self, didLoad: response.data)
-                client?.urlProtocol(self, didReceive: httpResponse, cacheStoragePolicy: .notAllowed)
-            }
+        if let error = stub.error {
+            client?.urlProtocol(self, didFailWithError: error)
+        } else if let response = stub.response?() {
+            let httpResponse = HTTPURLResponse(url: url, statusCode: response.statusCode, httpVersion: nil, headerFields: response.headers)!
+            client?.urlProtocol(self, didLoad: response.data)
+            client?.urlProtocol(self, didReceive: httpResponse, cacheStoragePolicy: .notAllowed)
         }
         client?.urlProtocolDidFinishLoading(self)
     }

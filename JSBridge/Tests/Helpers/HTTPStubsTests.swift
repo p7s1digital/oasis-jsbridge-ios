@@ -126,4 +126,26 @@ extension HTTPStubsTests {
         
         waitForExpectations(timeout: 1)
     }
+    
+    func testErrorIsForwarded() {
+        // GIVEN
+        let initialError = URLError(.resourceUnavailable)
+        HTTPStubs.stub(url: testUrl, error: initialError, response: nil)
+        
+        // WHEN
+        let expectation = self.expectation(description: "urlRequest")
+        expectation.assertForOverFulfill = true
+        expectation.expectedFulfillmentCount = 1
+        
+        testSession.dataTask(with: URLRequest(url: testUrl)) { data, response, error in
+            // THEN
+            XCTAssertNil(response)
+            XCTAssertNil(data)
+            XCTAssertNotNil(error)
+            XCTAssertEqual(initialError.code, (error as? URLError)?.code)
+            expectation.fulfill()
+        }.resume()
+        
+        waitForExpectations(timeout: 1)
+    }
 }

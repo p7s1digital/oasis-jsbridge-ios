@@ -471,9 +471,7 @@ extension XMLHttpRequestTests {
     func testEvents_properties_openSendError() {
         // GIVEN
         let url = "https://test.url/api/request"
-        stubRequests(url: url) {
-            HTTPResponseStub(statusCode: 500, error: URLError(.resourceUnavailable))
-        }
+        stubRequests(url: url, error: URLError(.resourceUnavailable), response: nil)
 
         let expectedEvents = """
         readystatechange 1
@@ -754,9 +752,7 @@ extension XMLHttpRequestTests {
     func testEvents_listeners_openSendError() {
         // GIVEN
         let url = "https://test.url/api/request"
-        stubRequests(url: url) {
-            HTTPResponseStub(statusCode: 500, error: URLError(.resourceUnavailable))
-        }
+        stubRequests(url: url, error: URLError(.resourceUnavailable), response: nil)
 
         let expectedEvents = """
         readystatechange 1
