@@ -22,7 +22,7 @@ extension XCTestCase {
             HTTPResponseStub(
                 data: textResponse.data(using: String.Encoding.utf8)!,
                 statusCode: 200,
-                headers: ["Content-Type": "application/json"]
+                headers: nil
             )
         }
     }
