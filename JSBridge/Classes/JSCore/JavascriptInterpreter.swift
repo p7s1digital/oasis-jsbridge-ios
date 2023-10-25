@@ -46,29 +46,20 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     ///   If you're using multiple instances of '`JavascriptInterpreter`
     ///   and want to have seperate storage for each of them
     ///   please provide a unique prefix for all of them.
-    public init(namespace: String) {
-        jsContext = JSContext()
-        localStorage = LocalStorage(with: namespace)
-        
-        jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
-        jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
-        
-        timeouts = JavascriptTimeouts(queue: jsQueue)
-        urlSession = JavascriptInterpreter.createURLSession()
-        
-        setup()
+    public convenience init(namespace: String) {
+        self.init(namespace: namespace, urlSession: JavascriptInterpreter.createURLSession())
     }
     
     /// Test initialiser
-    init(namespace: String, testUrlSession: URLSession) {
-        jsContext = JSContext()
-        localStorage = LocalStorage(with: namespace)
+    init(namespace: String, urlSession: URLSession) {
+        self.jsContext = JSContext()
+        self.localStorage = LocalStorage(with: namespace)
         
-        jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
-        jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
+        self.jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
+        self.jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
         
-        timeouts = JavascriptTimeouts(queue: jsQueue)
-        urlSession = testUrlSession
+        self.timeouts = JavascriptTimeouts(queue: jsQueue)
+        self.urlSession = urlSession
         
         setup()
     }
