@@ -1,19 +1,15 @@
 import XCTest
-import OHHTTPStubs
-#if SWIFT_PACKAGE
-import OHHTTPStubsSwift
-#endif
 
 extension XCTestCase {
-    func stubRequests(url: String, response: @escaping () -> HTTPStubsResponse) {
-        HTTPStubs.stubRequests(passingTest: isAbsoluteURLString(url)) { _ in
-            response()
-        }
+    
+    func stubRequests(url: String, error: Error? = nil, response: (() -> HTTPResponseStub)?) {
+        let url = URL(string: url)!
+        HTTPStubs.stub(url: url, error: error, response: response)
     }
 
     func stubRequests(url: String, jsonResponse: String) {
-        stubRequests(url: url) {
-            HTTPStubsResponse(
+        stubRequests(url: url, error: nil) {
+            HTTPResponseStub(
                 data: jsonResponse.data(using: String.Encoding.utf8)!,
                 statusCode: 200,
                 headers: ["Content-Type": "application/json"]
@@ -22,8 +18,8 @@ extension XCTestCase {
     }
 
     func stubRequests(url: String, textResponse: String) {
-        stubRequests(url: url) {
-            HTTPStubsResponse(
+        stubRequests(url: url, error: nil) {
+            HTTPResponseStub(
                 data: textResponse.data(using: String.Encoding.utf8)!,
                 statusCode: 200,
                 headers: nil
@@ -31,3 +27,4 @@ extension XCTestCase {
         }
     }
 }
+
