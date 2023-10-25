@@ -22,10 +22,10 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     private static let JSQUEUE_LABEL = "JSBridge.JSSerialQueue"
     private static let jsQueueKey = DispatchSpecificKey<String>()
     
-    public let jsContext: JSContext!
+    public let jsContext: JSContext
     private let jsQueue: DispatchQueue
-    private let localStorage: LocalStorage!
-    private var urlSession = JavascriptInterpreter.createURLSession()
+    private let localStorage: LocalStorage
+    private let urlSession: URLSession
     private let timeouts: JavascriptTimeouts
     private var xmlHttpRequestInstances = NSPointerArray.weakObjects()
     private var webSocketInstances = NSPointerArray.weakObjects()
@@ -46,17 +46,25 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     ///   If you're using multiple instances of '`JavascriptInterpreter`
     ///   and want to have seperate storage for each of them
     ///   please provide a unique prefix for all of them.
-    ///
-    public init(namespace:String) {
-        jsContext = JSContext()
+    public convenience init(namespace: String) {
+        self.init(namespace: namespace, urlSession: JavascriptInterpreter.createURLSession())
+    }
+    
+    /// Test initialiser
+    init(namespace: String, urlSession: URLSession) {
+        self.jsContext = JSContext()
+        self.localStorage = LocalStorage(with: namespace)
         
-        localStorage = LocalStorage(with: namespace)
+        self.jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
+        self.jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
         
-        jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
-        jsQueue.setSpecific(key: JavascriptInterpreter.jsQueueKey, value: JavascriptInterpreter.JSQUEUE_LABEL)
+        self.timeouts = JavascriptTimeouts(queue: jsQueue)
+        self.urlSession = urlSession
         
-        timeouts = JavascriptTimeouts(queue: jsQueue)
-        
+        setup()
+    }
+    
+    func setup() {
         setupExceptionHandling()
         setupGlobal()
         setupConsole()

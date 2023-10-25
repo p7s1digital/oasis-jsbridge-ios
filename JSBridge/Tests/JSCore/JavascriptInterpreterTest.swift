@@ -16,7 +16,6 @@
 
 import XCTest
 import JavaScriptCore
-import OHHTTPStubs
 @testable import OasisJSBridge
 
 @objc private protocol VehicleProtocol: JSExport {

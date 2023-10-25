@@ -7,9 +7,6 @@ let package = Package(
     products: [
         .library(name: "OasisJSBridge", targets: ["OasisJSBridge"])
     ],
-    dependencies: [
-        .package(url: "https://github.com/AliSoftware/OHHTTPStubs.git", from: "9.1.0"),
-    ],
     targets: [
         .target(
             name: "OasisJSBridge",
@@ -19,7 +16,6 @@ let package = Package(
             name: "OasisJSBridgeTests",
             dependencies: [
                 "OasisJSBridge",
-                .product(name: "OHHTTPStubsSwift", package: "OHHTTPStubs"),
             ],
             path: "JSBridge/Tests",
             resources: [
