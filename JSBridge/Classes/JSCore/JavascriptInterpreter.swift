@@ -411,6 +411,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         jsContext.evaluateScript("""
             var global = this;
             var window = this;
+            var self = this;
         """)
     }
     
