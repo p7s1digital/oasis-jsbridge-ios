@@ -188,14 +188,13 @@ class JavascriptInterpreterTest: XCTestCase {
             expectation.fulfill()
         }
         JSBridgeConfiguration.add(logger: logger)
-        addTeardownBlock {
-            JSBridgeConfiguration.remove(logger: logger)
-        }
-
+        
         subject.evaluateString(js: js)
 
         // THEN
         waitForExpectations(timeout: 1)
+        
+        JSBridgeConfiguration.remove(logger: logger)
     }
 
     func testSetObject() {
