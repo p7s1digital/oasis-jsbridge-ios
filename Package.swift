@@ -10,7 +10,10 @@ let package = Package(
     targets: [
         .target(
             name: "OasisJSBridge",
-            path: "JSBridge/Classes"
+            path: "JSBridge/Classes",
+            resources: [
+                .process("Resources/PrivacyInfo.xcprivacy")
+            ]
         ),
         .testTarget(
             name: "OasisJSBridgeTests",

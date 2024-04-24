@@ -13,6 +13,11 @@ Pod::Spec.new do |s|
   s.swift_version = '5.0'
   s.static_framework = false
   s.source_files = 'JSBridge/Classes/**/*'
+  s.resource_bundles = {
+    'OasisJSBridge' => [
+        'JSBridge/Classes/Resources/PrivacyInfo.xcprivacy'
+    ]
+  }
 
   s.test_spec 'Tests' do |s|
     s.source_files = 'JSBridge/Tests/**/*.swift'
