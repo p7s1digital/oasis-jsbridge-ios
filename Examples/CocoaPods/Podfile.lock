@@ -1,6 +1,6 @@
 PODS:
-  - OasisJSBridge (0.6.2)
-  - OasisJSBridge/Tests (0.6.2)
+  - OasisJSBridge (0.7.1)
+  - OasisJSBridge/Tests (0.7.1)
 
 DEPENDENCIES:
   - OasisJSBridge (from `../../`)
@@ -11,8 +11,8 @@ EXTERNAL SOURCES:
     :path: "../../"
 
 SPEC CHECKSUMS:
-  OasisJSBridge: d7d073052516699f735014fd111ddc2d33be52d7
+  OasisJSBridge: b7f7be86c6e218b2738d98a5d6063a88c23a9f20
 
-PODFILE CHECKSUM: 2dd6dbf986bfb15a0192c3268b03c70485bcd9dc
+PODFILE CHECKSUM: 0e025edda0da0710f36acbb07c76a5a3b46fb297
 
 COCOAPODS: 1.12.1
