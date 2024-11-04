@@ -105,6 +105,43 @@ extension XMLHttpRequestTests {
             XCTAssertEqual(received as? NSDictionary, expected)
         }
     }
+    
+    func test_removingWhitespacesInURL() {
+        // GIVEN
+        let url = " https://test.url/api/request "
+        let responseText = "testValue"
+        stubRequests(url: url, jsonResponse: responseText)
+        
+        let expectedPayloads: [NSString] = [
+            responseText as NSString,
+            responseText as NSString
+        ]
+        
+        // WHEN
+        let js = """
+            var xhr = new XMLHttpRequest();
+            xhr.responseType = "text";
+            xhr.onload = function() {
+              native.sendEvent("response", xhr.response);
+              native.sendEvent("responseText", xhr.responseText);
+            }
+            xhr.open("GET", "\(url)");
+            xhr.send();
+            """
+        interpreter.evaluateString(js: js)
+        
+        let expectation = self.expectation(description: "js")
+        expectation.expectedFulfillmentCount = expectedPayloads.count
+        native.resetAndSetExpectation(expectation)
+        
+        waitForExpectations(timeout: 1)
+        
+        // THEN
+        XCTAssertEqual(native.receivedEvents.count, expectedPayloads.count)
+        for (received, expected) in zip(native.receivedEvents.map(\.payload), expectedPayloads) {
+            XCTAssertEqual(received as? NSString, expected)
+        }
+    }
 
     func test_invalidURL() {
         // GIVEN
