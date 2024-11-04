@@ -8,7 +8,7 @@ extension XCTestCase {
     }
 
     func stubRequests(url: String, jsonResponse: String) {
-        stubRequests(url: url, error: nil) {
+        stubRequests(url: url.trimmingCharacters(in: .whitespaces), error: nil) {
             HTTPResponseStub(
                 data: jsonResponse.data(using: String.Encoding.utf8)!,
                 statusCode: 200,

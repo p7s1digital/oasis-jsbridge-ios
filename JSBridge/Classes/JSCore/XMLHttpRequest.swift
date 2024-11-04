@@ -115,7 +115,7 @@ import JavaScriptCore
 
 extension XMLHttpRequest: XMLHttpRequestJSExport {
     func open(_ httpMethod: String, _ urlString: String) {
-        if let url = URL(string: urlString) {
+        if let url = URL(string: urlString.trimmingCharacters(in: .whitespaces)) {
             var request = URLRequest(url: url)
             request.httpMethod = httpMethod
             self.request = request
