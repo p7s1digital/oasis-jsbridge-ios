@@ -518,7 +518,11 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         let config = URLSessionConfiguration.default
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         config.urlCache = nil
-        return URLSession(configuration: config)
+        return URLSession(
+            configuration: config,
+            delegate: TraceableURLSessionDelegate(),
+            delegateQueue: nil
+        )
     }
     
     private func setupXMLHttpRequest() {
