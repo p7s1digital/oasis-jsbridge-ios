@@ -53,6 +53,7 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     /// Test initialiser
     init(namespace: String, urlSession: URLSession) {
         self.jsContext = JSContext()
+        self.jsContext.name = namespace
         self.localStorage = LocalStorage(with: namespace)
         
         self.jsQueue = DispatchQueue(label: JavascriptInterpreter.JSQUEUE_LABEL)
@@ -396,7 +397,6 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
 
     private func enableDebugMode(contextName: String) {
         #if DEBUG && os(iOS)
-        jsContext.name = contextName
         if #available(iOS 16.4, *) {
             // enable js debug through Safari
             jsContext.isInspectable = true
