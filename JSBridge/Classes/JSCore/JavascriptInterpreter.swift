@@ -60,7 +60,8 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         
         self.timeouts = JavascriptTimeouts(queue: jsQueue)
         self.urlSession = urlSession
-        
+
+        enableDebugMode(contextName: namespace)
         setup()
     }
     
@@ -392,7 +393,17 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
             }
         }
     }
-    
+
+    private func enableDebugMode(contextName: String) {
+        #if DEBUG && os(iOS)
+        jsContext.name = contextName
+        if #available(iOS 16.4, *) {
+            // enable js debug through Safari
+            jsContext.isInspectable = true
+        }
+        #endif
+    }
+
     private func setupExceptionHandling() {
         jsContext.exceptionHandler = { [weak self] context, exception in
             self?.lastException = exception
