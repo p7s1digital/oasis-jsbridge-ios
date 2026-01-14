@@ -46,12 +46,13 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
     ///   If you're using multiple instances of '`JavascriptInterpreter`
     ///   and want to have seperate storage for each of them
     ///   please provide a unique prefix for all of them.
-    public convenience init(namespace: String) {
-        self.init(namespace: namespace, urlSession: JavascriptInterpreter.createURLSession())
+    ///   - userAgent: User agent from WebView, if provided it will be added into each XMLHttpRequest header field 'User-Agent' and will rewrite existing one (if any)
+    public convenience init(namespace: String, userAgent: String? = nil) {
+        self.init(namespace: namespace, urlSession: JavascriptInterpreter.createURLSession(), userAgent: userAgent)
     }
     
     /// Test initialiser
-    init(namespace: String, urlSession: URLSession) {
+    init(namespace: String, urlSession: URLSession, userAgent: String?) {
         self.jsContext = JSContext()
         self.jsContext.name = namespace
         self.localStorage = LocalStorage(with: namespace)
@@ -63,17 +64,17 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         self.urlSession = urlSession
 
         enableDebugMode(contextName: namespace)
-        setup()
+        setup(userAgent)
     }
     
-    func setup() {
+    func setup(_ userAgent: String?) {
         setupExceptionHandling()
         setupGlobal()
         setupConsole()
         setupNativePromise()
         setupStringify()
         setupTimeoutAndInterval()
-        setupXMLHttpRequest()
+        setupXMLHttpRequest(userAgent)
         if #available(iOS 13, tvOS 13, *) {
             setupWebSocket()
         }
@@ -536,8 +537,8 @@ open class JavascriptInterpreter: JavascriptInterpreterProtocol {
         )
     }
     
-    private func setupXMLHttpRequest() {
-        XMLHttpRequest.configure(urlSession: urlSession, jsQueue: jsQueue, context: jsContext, logger: {
+    private func setupXMLHttpRequest(_ userAgent: String?) {
+        XMLHttpRequest.configure(urlSession: urlSession, userAgent: userAgent, jsQueue: jsQueue, context: jsContext, logger: {
             Logger.verbose("XHR: \($0)")
         })
     }

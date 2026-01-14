@@ -69,6 +69,7 @@ import JavaScriptCore
 
     private let jsQueue: DispatchQueue
     private let urlSession: URLSession
+    private let userAgent: String?
     private let logger: ((String) -> Void)?
     private var eventListeners = [XMLHttpRequestEvent.EventType: JSValue]()
 
@@ -79,10 +80,11 @@ import JavaScriptCore
 
     // MARK: Init
 
-    init(urlSession: URLSession, jsQueue: DispatchQueue, logger: ((String) -> Void)?) {
+    init(urlSession: URLSession, userAgent: String?, jsQueue: DispatchQueue, logger: ((String) -> Void)?) {
         self.urlSession = urlSession
         self.jsQueue = jsQueue
         self.logger = logger
+        self.userAgent = userAgent
 
         super.init()
     }
@@ -91,13 +93,14 @@ import JavaScriptCore
 
     static func configure(
         urlSession: URLSession,
+        userAgent: String?,
         jsQueue: DispatchQueue,
         context: JSContext,
         logger: ((String) -> Void)? = nil
     ) {
         jsQueue.async {
             let constructor: @convention(block) () -> XMLHttpRequest = {
-                XMLHttpRequest(urlSession: urlSession, jsQueue: jsQueue, logger: logger)
+                XMLHttpRequest(urlSession: urlSession, userAgent: userAgent, jsQueue: jsQueue, logger: logger)
             }
             context.setObject(constructor, forKeyedSubscript: NSString(string: "XMLHttpRequest"))
 
@@ -118,6 +121,9 @@ extension XMLHttpRequest: XMLHttpRequestJSExport {
         if let url = URL(string: urlString.trimmingCharacters(in: .whitespaces)) {
             var request = URLRequest(url: url)
             request.httpMethod = httpMethod
+            if let userAgent {
+                request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+            }
             self.request = request
         } else {
             log("Cannot create URL from \(urlString)")

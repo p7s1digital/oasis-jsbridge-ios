@@ -18,7 +18,7 @@ final class XMLHttpRequestTests: XCTestCase {
     }
     
     override func setUpWithError() throws {
-        interpreter = JavascriptInterpreter(namespace: "httpReqInterpreter", urlSession: testSession)
+        interpreter = JavascriptInterpreter(namespace: "httpReqInterpreter", urlSession: testSession, userAgent: "tese-user-agent")
         native = Native()
         
         interpreter.jsContext.setObject(native, forKeyedSubscript: "native" as NSString)
