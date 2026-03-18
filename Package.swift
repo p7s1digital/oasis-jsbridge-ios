@@ -1,9 +1,9 @@
-// swift-tools-version:5.9
+// swift-tools-version:5.10
 import PackageDescription
 
 let package = Package(
     name: "OasisJSBridge",
-    platforms: [.iOS(.v12), .tvOS(.v12), .visionOS(.v1), .macOS(.v12)],
+    platforms: [.iOS(.v12), .tvOS(.v12), .visionOS(.v1), .macCatalyst(.v15), .macOS(.v12)],
     products: [
         .library(name: "OasisJSBridge", targets: ["OasisJSBridge"])
     ],
